@@ -1,74 +1,162 @@
-# Welcome to your Lovable project
+# TipKoro Waiting List Landing Page
 
-## Project info
+A responsive, mobile-first landing page for TipKoro — a Bangladeshi-focused creator support platform similar to Ko-fi/BuyMeACoffee.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## Features
 
-## How can I edit this code?
+- **Hero Section**: Promo badge, headline, CTA with payment methods
+- **Billing Timeline**: Visual representation of the Early Creator Offer
+- **Two-Step Signup Flow**: Payment → Details form
+- **Success State**: Confirmation card with confetti animation
+- **Why TipKoro**: Feature cards highlighting platform benefits
+- **Creator Highlights**: Testimonials from creators
 
-There are several ways of editing your application.
+## Early Creator Offer — Promo Credit Logic
 
-**Use Lovable**
+### How It Works
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+1. **Month 1 (Paid)**: Creator pays ৳150 to activate their account
+2. **Month 2 (Free)**: Complimentary — no charge
+3. **Month 3 (Free)**: Complimentary — no charge  
+4. **Month 4+ (Recurring)**: Automatic billing starts at ৳150/month
 
-Changes made via Lovable will be committed automatically to this repo.
+### Backend Metadata Structure
 
-**Use your preferred IDE**
+When a user signs up, store the following metadata:
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+```typescript
+interface CreatorPromoMetadata {
+  promo: boolean;              // true for Early Creator Offer signups
+  signup_date: Date;           // Date of initial payment
+  active_until: Date;          // signup_date + 3 months
+  billing_start: Date;         // signup_date + 3 months (when billing resumes)
+  payment_id: string;          // Transaction ID from Rupantor Pay
+  first_month_paid: boolean;   // true after successful payment
+}
+```
 
-The only requirement is having Bun installed - [install Bun](https://bun.sh/docs/installation)
+### Clerk User Profile Fields
 
-Follow these steps:
+```typescript
+interface CreatorProfile {
+  username: string;            // Unique creator handle
+  firstName: string;
+  lastName: string;
+  email: string;
+  bio: string;                 // Max 200 characters
+  category: string;            // Creator category
+  socialLinks: {
+    twitter?: string;
+    instagram?: string;
+    youtube?: string;
+    other?: string;
+  };
+  payoutMethod: 'bkash' | 'nagad' | 'rocket' | 'card' | 'crypto';
+  phone?: string;
+}
+```
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+## Payment Integration
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+### Rupantor Pay API
 
-# Step 3: Install the necessary dependencies.
+**Base URL**: `https://payment.rupantorpay.com/api`
+
+#### Create Checkout Session
+
+```bash
+POST /payment/checkout
+Headers:
+  Content-Type: application/json
+  X-API-KEY: <YOUR_API_KEY>
+  X-CLIENT: <YOUR_HOST>
+
+Body:
+{
+  "fullname": "John Doe",
+  "email": "john@example.com",
+  "amount": 150,
+  "success_url": "https://tipkoro.com/join?step=details",
+  "cancel_url": "https://tipkoro.com/join?step=payment&cancelled=true",
+  "webhook_url": "https://api.tipkoro.com/webhooks/rupantor",
+  "meta_data": {
+    "signup_type": "early_creator_offer",
+    "promo_months": 2
+  }
+}
+```
+
+#### Verify Payment
+
+```bash
+POST /payment/verify-payment
+Body: { "transaction_id": "OVKPXW165414" }
+```
+
+## Webhook Payload (Admin Notification)
+
+When a new creator signs up, send webhook to admin:
+
+```typescript
+interface SignupWebhookPayload {
+  event: 'creator.signup.completed';
+  timestamp: string;
+  creator: {
+    username: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    category: string;
+    bio: string;
+    payoutMethod: string;
+  };
+  payment: {
+    transaction_id: string;
+    amount: number;
+    currency: 'BDT';
+    method: string;
+    status: 'COMPLETED';
+  };
+  promo: {
+    type: 'early_creator_offer';
+    free_months: 2;
+    billing_starts: string; // ISO date
+  };
+  clerk_user_id: string;
+}
+```
+
+## Tech Stack
+
+- React 19 + TypeScript
+- Tailwind CSS (custom beige theme)
+- Vite
+- shadcn/ui components
+
+## Design System
+
+The app uses a warm beige theme with:
+- **Background**: `hsl(40, 33%, 96%)`
+- **Accent (Gold)**: `hsl(45, 92%, 62%)`
+- **Primary (Dark)**: `hsl(30, 10%, 12%)`
+- **Success (Green)**: `hsl(142, 52%, 45%)`
+
+Fonts:
+- Display: Bricolage Grotesque
+- Body: DM Sans
+
+## Local Development
+
+```bash
 bun install
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
 bun run dev
 ```
 
-**Edit a file directly in GitHub**
+## Environment Variables (for production)
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Bun 1.3.4
-- Vite 7.2.7
-- TypeScript
-- React 19.2.1
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+```env
+RUPANTOR_API_KEY=<your_api_key>
+RUPANTOR_CLIENT_HOST=tipkoro.com
+CLERK_SECRET_KEY=<clerk_secret>
+ADMIN_WEBHOOK_URL=<admin_webhook_endpoint>
+```
