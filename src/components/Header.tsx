@@ -1,6 +1,5 @@
 import React from "react";
 import { HeartIcon } from "./icons/PaymentIcons";
-import { ThemeToggle } from "./ThemeToggle";
 
 export const Header: React.FC = () => {
   return (
@@ -24,7 +23,6 @@ export const Header: React.FC = () => {
               Why TipKoro
             </a>
           </nav>
-          <ThemeToggle />
         </div>
       </div>
     </header>
