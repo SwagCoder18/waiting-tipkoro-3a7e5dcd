@@ -68,7 +68,9 @@ serve(async (req) => {
     const checkoutData = await checkoutResponse.json();
     console.log("Rupantor checkout response:", checkoutData);
 
-    if (checkoutData.status !== 1 || !checkoutData.payment_url) {
+    // Check for success: status can be true (boolean) or 1 (number)
+    const isSuccess = checkoutData.status === true || checkoutData.status === 1;
+    if (!isSuccess || !checkoutData.payment_url) {
       console.error("Checkout failed:", checkoutData);
       return new Response(
         JSON.stringify({ error: checkoutData.message || "Failed to create payment link" }),
