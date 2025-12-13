@@ -50,7 +50,7 @@ export const SignupForm: React.FC<SignupFormProps> = ({
   step,
   onPaymentComplete,
 }) => {
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string | null>(null);
+  
   const [paymentFormData, setPaymentFormData] = useState({
     fullname: "",
     email: "",
@@ -91,10 +91,6 @@ export const SignupForm: React.FC<SignupFormProps> = ({
 
   const validateStep1 = () => {
     const newErrors: Partial<Record<string, string>> = {};
-
-    if (!selectedPaymentMethod) {
-      return false;
-    }
 
     if (!paymentFormData.fullname.trim()) {
       newErrors.fullname = "Full name is required";
@@ -208,28 +204,20 @@ export const SignupForm: React.FC<SignupFormProps> = ({
           </div>
         </div>
 
-        <PaymentMethodSelector
-          selectedMethod={selectedPaymentMethod}
-          onSelect={setSelectedPaymentMethod}
-        />
-
-        {selectedPaymentMethod && (
-          <div className="tipkoro-card bg-secondary/30 animate-fade-in">
-            <p className="text-sm text-muted-foreground mb-2">
-              You&apos;ll be redirected to complete payment via{" "}
-              <span className="font-semibold capitalize">{selectedPaymentMethod}</span>
-            </p>
-            <p className="text-2xl font-bold text-foreground">
-              ৳150 <span className="text-sm font-normal text-muted-foreground">/month</span>
-            </p>
-          </div>
-        )}
+        <div className="tipkoro-card bg-secondary/30">
+          <p className="text-sm text-muted-foreground mb-2">
+            You&apos;ll be redirected to Rupantor Pay to complete payment
+          </p>
+          <p className="text-2xl font-bold text-foreground">
+            ৳150 <span className="text-sm font-normal text-muted-foreground">/month</span>
+          </p>
+        </div>
 
         <Button
           type="submit"
           variant="hero-accent"
           className="w-full"
-          disabled={!selectedPaymentMethod || isLoading}
+          disabled={isLoading}
         >
           {isLoading ? "Redirecting to payment..." : "Pay & Continue →"}
         </Button>
