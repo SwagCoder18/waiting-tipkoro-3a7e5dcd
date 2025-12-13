@@ -209,7 +209,7 @@ export const SignupForm: React.FC<SignupFormProps> = ({
             You&apos;ll be redirected to complete payment securely
           </p>
           <p className="text-2xl font-bold text-foreground">
-            ৳150 <span className="text-sm font-normal text-muted-foreground">/month</span>
+            ৳10 <span className="text-sm font-normal text-muted-foreground">/month</span>
           </p>
         </div>
 

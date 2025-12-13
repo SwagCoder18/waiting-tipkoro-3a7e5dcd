@@ -39,7 +39,7 @@ export const SuccessCard: React.FC<SuccessCardProps> = ({ username = "creator" }
 
       <div className="mt-6 p-4 bg-accent/10 rounded-xl">
         <p className="text-sm text-foreground">
-          <span className="font-semibold">Receipt note:</span> Month 1 paid (৳150); 
+          <span className="font-semibold">Receipt note:</span> Month 1 paid (৳10); 
           months 2–3 complimentary as part of Early Creator Offer.
         </p>
       </div>
