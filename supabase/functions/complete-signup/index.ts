@@ -55,6 +55,85 @@ serve(async (req) => {
       );
     }
 
+    // Validate name lengths
+    if (first_name.length > 100) {
+      return new Response(
+        JSON.stringify({ error: "First name must be 100 characters or less" }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (last_name.length > 100) {
+      return new Response(
+        JSON.stringify({ error: "Last name must be 100 characters or less" }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate bio length
+    if (bio.length > 200) {
+      return new Response(
+        JSON.stringify({ error: "Bio must be 200 characters or less" }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate category length
+    if (category.length > 50) {
+      return new Response(
+        JSON.stringify({ error: "Category must be 50 characters or less" }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate URL format for social links
+    const urlPattern = /^https?:\/\/.+/;
+    
+    if (twitter && (twitter.length > 500 || !urlPattern.test(twitter))) {
+      return new Response(
+        JSON.stringify({ error: "Invalid Twitter URL" }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (instagram && (instagram.length > 500 || !urlPattern.test(instagram))) {
+      return new Response(
+        JSON.stringify({ error: "Invalid Instagram URL" }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (youtube && (youtube.length > 500 || !urlPattern.test(youtube))) {
+      return new Response(
+        JSON.stringify({ error: "Invalid YouTube URL" }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (other_link && (other_link.length > 500 || !urlPattern.test(other_link))) {
+      return new Response(
+        JSON.stringify({ error: "Invalid URL format for other link" }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate phone format (optional, but if provided must be valid)
+    if (phone && (phone.length > 20 || !/^[+\d\s()-]+$/.test(phone))) {
+      return new Response(
+        JSON.stringify({ error: "Invalid phone number format" }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate payout_method
+    const validPayoutMethods = ['bkash', 'nagad', 'rocket', 'bank'];
+    if (!validPayoutMethods.includes(payout_method)) {
+      return new Response(
+        JSON.stringify({ error: "Invalid payout method" }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     const adminWebhookUrl = Deno.env.get('ADMIN_WEBHOOK_URL');
