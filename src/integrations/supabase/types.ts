@@ -14,7 +14,87 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      creator_signups: {
+        Row: {
+          active_until: string | null
+          amount: number | null
+          billing_start: string | null
+          bio: string | null
+          category: string | null
+          created_at: string | null
+          currency: string | null
+          email: string | null
+          first_name: string | null
+          id: string
+          instagram: string | null
+          last_name: string | null
+          other_link: string | null
+          payment_method: string | null
+          payment_status: string | null
+          payout_method: string | null
+          phone: string | null
+          promo: boolean | null
+          signup_date: string | null
+          transaction_id: string | null
+          twitter: string | null
+          updated_at: string | null
+          username: string | null
+          youtube: string | null
+        }
+        Insert: {
+          active_until?: string | null
+          amount?: number | null
+          billing_start?: string | null
+          bio?: string | null
+          category?: string | null
+          created_at?: string | null
+          currency?: string | null
+          email?: string | null
+          first_name?: string | null
+          id?: string
+          instagram?: string | null
+          last_name?: string | null
+          other_link?: string | null
+          payment_method?: string | null
+          payment_status?: string | null
+          payout_method?: string | null
+          phone?: string | null
+          promo?: boolean | null
+          signup_date?: string | null
+          transaction_id?: string | null
+          twitter?: string | null
+          updated_at?: string | null
+          username?: string | null
+          youtube?: string | null
+        }
+        Update: {
+          active_until?: string | null
+          amount?: number | null
+          billing_start?: string | null
+          bio?: string | null
+          category?: string | null
+          created_at?: string | null
+          currency?: string | null
+          email?: string | null
+          first_name?: string | null
+          id?: string
+          instagram?: string | null
+          last_name?: string | null
+          other_link?: string | null
+          payment_method?: string | null
+          payment_status?: string | null
+          payout_method?: string | null
+          phone?: string | null
+          promo?: boolean | null
+          signup_date?: string | null
+          transaction_id?: string | null
+          twitter?: string | null
+          updated_at?: string | null
+          username?: string | null
+          youtube?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

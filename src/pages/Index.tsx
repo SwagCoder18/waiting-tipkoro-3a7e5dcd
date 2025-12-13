@@ -9,8 +9,10 @@ import { CreatorHighlights } from "@/components/CreatorHighlights";
 import { SuccessCard } from "@/components/SuccessCard";
 import { Confetti } from "@/components/Confetti";
 import { BkashIcon, NagadIcon, RocketIcon, CardIcon, CryptoIcon, SparkleIcon } from "@/components/icons/PaymentIcons";
+import { createCheckout } from "@/lib/api";
+import { toast } from "@/hooks/use-toast";
 
-type SignupStep = "initial" | "payment" | "details" | "success";
+type SignupStep = "initial" | "payment" | "success";
 
 const Index: React.FC = () => {
   const [step, setStep] = useState<SignupStep>("initial");
@@ -20,28 +22,38 @@ const Index: React.FC = () => {
 
   const handleStartSignup = () => {
     setStep("payment");
-    // Scroll to signup section
     document.getElementById("signup")?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const handlePaymentComplete = () => {
+  const handlePaymentComplete = async (paymentData: { fullname: string; email: string }) => {
     setIsLoading(true);
-    // Simulate payment processing
-    setTimeout(() => {
-      setIsLoading(false);
-      setStep("details");
-    }, 1500);
-  };
+    try {
+      const result = await createCheckout({
+        fullname: paymentData.fullname,
+        email: paymentData.email,
+        amount: 150,
+      });
 
-  const handleFormSubmit = (data: any) => {
-    setIsLoading(true);
-    setUsername(data.username);
-    // Simulate API call
-    setTimeout(() => {
+      if (result.payment_url) {
+        // Redirect to Rupantor Pay
+        window.location.href = result.payment_url;
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to create payment link",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+      }
+    } catch (error) {
+      console.error("Checkout error:", error);
+      toast({
+        title: "Error",
+        description: "Something went wrong. Please try again.",
+        variant: "destructive",
+      });
       setIsLoading(false);
-      setStep("success");
-      setShowConfetti(true);
-    }, 2000);
+    }
   };
 
   return (
@@ -180,36 +192,7 @@ const Index: React.FC = () => {
               </div>
               <SignupForm
                 step="payment"
-                onSubmit={() => {}}
                 onPaymentComplete={handlePaymentComplete}
-                isLoading={isLoading}
-              />
-            </div>
-          )}
-
-          {step === "details" && (
-            <div className="animate-fade-in">
-              <div className="text-center mb-8">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-success/20 text-success text-sm mb-4">
-                  <span>✓ Payment Complete</span>
-                </div>
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-muted text-sm mb-4 ml-2">
-                  <span className="w-6 h-6 rounded-full bg-accent text-accent-foreground flex items-center justify-center text-xs font-bold">
-                    2
-                  </span>
-                  <span>Details</span>
-                </div>
-                <h2 className="text-2xl font-display font-bold">
-                  Complete Your Profile
-                </h2>
-                <p className="text-muted-foreground mt-2">
-                  Tell us about yourself and your work
-                </p>
-              </div>
-              <SignupForm
-                step="details"
-                onSubmit={handleFormSubmit}
-                onPaymentComplete={() => {}}
                 isLoading={isLoading}
               />
             </div>

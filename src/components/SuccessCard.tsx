@@ -3,10 +3,10 @@ import { Button } from "./ui/button";
 import { CheckCircleIcon, SparkleIcon } from "./icons/PaymentIcons";
 
 interface SuccessCardProps {
-  username: string;
+  username?: string;
 }
 
-export const SuccessCard: React.FC<SuccessCardProps> = ({ username }) => {
+export const SuccessCard: React.FC<SuccessCardProps> = ({ username = "creator" }) => {
   return (
     <div className="tipkoro-card text-center max-w-md mx-auto animate-scale-in">
       <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-success/20 flex items-center justify-center">

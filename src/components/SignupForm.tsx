@@ -23,13 +23,13 @@ const payoutMethods = [
 ];
 
 interface SignupFormProps {
-  onSubmit: (data: FormData) => void;
   isLoading?: boolean;
   step: "payment" | "details";
-  onPaymentComplete: () => void;
+  onPaymentComplete: (data: { fullname: string; email: string }) => void;
+  onSubmit?: (data: FormData) => void;
 }
 
-interface FormData {
+export interface FormData {
   username: string;
   firstName: string;
   lastName: string;
@@ -51,6 +51,10 @@ export const SignupForm: React.FC<SignupFormProps> = ({
   onPaymentComplete,
 }) => {
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string | null>(null);
+  const [paymentFormData, setPaymentFormData] = useState({
+    fullname: "",
+    email: "",
+  });
   const [formData, setFormData] = useState<FormData>({
     username: "",
     firstName: "",
@@ -65,7 +69,15 @@ export const SignupForm: React.FC<SignupFormProps> = ({
     payoutMethod: "",
     phone: "",
   });
-  const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({});
+  const [errors, setErrors] = useState<Partial<Record<keyof FormData | "fullname", string>>>({});
+
+  const handlePaymentInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setPaymentFormData((prev) => ({ ...prev, [name]: value }));
+    if (errors[name as keyof typeof errors]) {
+      setErrors((prev) => ({ ...prev, [name]: "" }));
+    }
+  };
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -78,10 +90,24 @@ export const SignupForm: React.FC<SignupFormProps> = ({
   };
 
   const validateStep1 = () => {
+    const newErrors: Partial<Record<string, string>> = {};
+
     if (!selectedPaymentMethod) {
       return false;
     }
-    return true;
+
+    if (!paymentFormData.fullname.trim()) {
+      newErrors.fullname = "Full name is required";
+    }
+
+    if (!paymentFormData.email.trim()) {
+      newErrors.email = "Email is required";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(paymentFormData.email)) {
+      newErrors.email = "Please enter a valid email";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const validateStep2 = () => {
@@ -130,14 +156,13 @@ export const SignupForm: React.FC<SignupFormProps> = ({
   const handlePaymentSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (validateStep1()) {
-      // Simulate payment processing
-      onPaymentComplete();
+      onPaymentComplete(paymentFormData);
     }
   };
 
   const handleDetailsSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (validateStep2()) {
+    if (validateStep2() && onSubmit) {
       onSubmit(formData);
     }
   };
@@ -145,6 +170,44 @@ export const SignupForm: React.FC<SignupFormProps> = ({
   if (step === "payment") {
     return (
       <form onSubmit={handlePaymentSubmit} className="space-y-6">
+        {/* Name and Email for checkout */}
+        <div className="space-y-4">
+          <div>
+            <label htmlFor="fullname" className="tipkoro-label">
+              Full Name <span className="text-destructive">*</span>
+            </label>
+            <input
+              type="text"
+              id="fullname"
+              name="fullname"
+              value={paymentFormData.fullname}
+              onChange={handlePaymentInputChange}
+              className="tipkoro-input"
+              placeholder="Your full name"
+            />
+            {errors.fullname && (
+              <p className="text-sm text-destructive mt-1">{errors.fullname}</p>
+            )}
+          </div>
+          <div>
+            <label htmlFor="email" className="tipkoro-label">
+              Email <span className="text-destructive">*</span>
+            </label>
+            <input
+              type="email"
+              id="email"
+              name="email"
+              value={paymentFormData.email}
+              onChange={handlePaymentInputChange}
+              className="tipkoro-input"
+              placeholder="you@example.com"
+            />
+            {errors.email && (
+              <p className="text-sm text-destructive mt-1">{errors.email}</p>
+            )}
+          </div>
+        </div>
+
         <PaymentMethodSelector
           selectedMethod={selectedPaymentMethod}
           onSelect={setSelectedPaymentMethod}
@@ -168,7 +231,7 @@ export const SignupForm: React.FC<SignupFormProps> = ({
           className="w-full"
           disabled={!selectedPaymentMethod || isLoading}
         >
-          {isLoading ? "Processing..." : "Pay & Continue →"}
+          {isLoading ? "Redirecting to payment..." : "Pay & Continue →"}
         </Button>
 
         <p className="text-xs text-center text-muted-foreground">
@@ -247,12 +310,12 @@ export const SignupForm: React.FC<SignupFormProps> = ({
 
       {/* Email */}
       <div>
-        <label htmlFor="email" className="tipkoro-label">
+        <label htmlFor="detailsEmail" className="tipkoro-label">
           Email <span className="text-destructive">*</span>
         </label>
         <input
           type="email"
-          id="email"
+          id="detailsEmail"
           name="email"
           value={formData.email}
           onChange={handleInputChange}
