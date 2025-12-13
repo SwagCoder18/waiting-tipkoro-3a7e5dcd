@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { BillingTimeline } from "@/components/BillingTimeline";
 import { SignupForm } from "@/components/SignupForm";
 import { WhyTipKoro } from "@/components/WhyTipKoro";
-import { CreatorHighlights } from "@/components/CreatorHighlights";
 import { SuccessCard } from "@/components/SuccessCard";
 import { Confetti } from "@/components/Confetti";
 import { BkashIcon, NagadIcon, RocketIcon, CardIcon, CryptoIcon, SparkleIcon } from "@/components/icons/PaymentIcons";
@@ -35,7 +34,7 @@ const Index: React.FC = () => {
       });
 
       if (result.payment_url) {
-        // Redirect to Rupantor Pay
+        // Redirect to payment gateway
         window.location.href = result.payment_url;
       } else {
         toast({
@@ -210,9 +209,6 @@ const Index: React.FC = () => {
       <div id="why">
         <WhyTipKoro />
       </div>
-
-      {/* Creator Highlights */}
-      <CreatorHighlights />
 
       <Footer />
     </div>
