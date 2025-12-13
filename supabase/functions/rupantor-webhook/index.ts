@@ -19,6 +19,7 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     const adminWebhookUrl = Deno.env.get('ADMIN_WEBHOOK_URL');
+    const rupantorApiKey = Deno.env.get('RUPANTOR_API_KEY');
 
     if (!supabaseUrl || !supabaseServiceKey) {
       console.error("Missing Supabase configuration");
@@ -31,7 +32,6 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const transactionId = payload.transaction_id || payload.transactionId;
-    const status = payload.status;
     const paymentMethod = payload.payment_method || payload.paymentMethod;
     const amount = payload.amount;
 
@@ -43,6 +43,53 @@ serve(async (req) => {
       );
     }
 
+    // SECURITY: Verify the transaction with Rupantor API instead of trusting webhook data
+    // This prevents attackers from sending fake webhook payloads
+    let verifiedStatus = 'pending';
+    let verifiedAmount = amount;
+    
+    if (rupantorApiKey) {
+      try {
+        console.log("Verifying transaction with Rupantor API:", transactionId);
+        const verifyResponse = await fetch("https://api.rupantorpay.com/api/v1/verify", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            api_key: rupantorApiKey,
+            transaction_id: transactionId,
+          }),
+        });
+
+        const verifyData = await verifyResponse.json();
+        console.log("Rupantor verification response:", verifyData);
+
+        // Trust the verified status from API, not the webhook payload
+        const isVerified = verifyData.status === true || verifyData.status === 1;
+        if (isVerified && verifyData.transaction_status === "COMPLETED") {
+          verifiedStatus = 'completed';
+          verifiedAmount = verifyData.amount || amount;
+        } else if (verifyData.transaction_status === "FAILED" || verifyData.transaction_status === "ERROR") {
+          verifiedStatus = 'failed';
+        }
+        // If verification fails or status is pending, keep as 'pending'
+      } catch (verifyError) {
+        console.error("Failed to verify with Rupantor API:", verifyError);
+        // On verification failure, don't update status - keep as pending for safety
+        return new Response(
+          JSON.stringify({ error: "Verification failed" }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    } else {
+      console.warn("RUPANTOR_API_KEY not set - cannot verify webhook, rejecting for security");
+      return new Response(
+        JSON.stringify({ error: "Webhook verification not configured" }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Check if record exists
     const { data: existingRecord } = await supabase
       .from('creator_signups')
@@ -50,17 +97,14 @@ serve(async (req) => {
       .eq('transaction_id', transactionId)
       .maybeSingle();
 
-    const paymentStatus = status === 'COMPLETED' ? 'completed' : 
-                          status === 'ERROR' || status === 'FAILED' ? 'failed' : 'pending';
-
     if (existingRecord) {
-      // Update existing record
+      // Update existing record with VERIFIED status
       const { error: updateError } = await supabase
         .from('creator_signups')
         .update({
-          payment_status: paymentStatus,
+          payment_status: verifiedStatus,
           payment_method: paymentMethod,
-          amount: amount ? parseFloat(amount) : null,
+          amount: verifiedAmount ? parseFloat(verifiedAmount) : null,
         })
         .eq('transaction_id', transactionId);
 
@@ -68,14 +112,14 @@ serve(async (req) => {
         console.error("Error updating from webhook:", updateError);
       }
     } else {
-      // Insert new record
+      // Insert new record with VERIFIED status
       const { error: insertError } = await supabase
         .from('creator_signups')
         .insert({
           transaction_id: transactionId,
-          payment_status: paymentStatus,
+          payment_status: verifiedStatus,
           payment_method: paymentMethod,
-          amount: amount ? parseFloat(amount) : null,
+          amount: verifiedAmount ? parseFloat(verifiedAmount) : null,
           email: payload.email,
         });
 
@@ -84,10 +128,10 @@ serve(async (req) => {
       }
     }
 
-    console.log(`Webhook processed: ${transactionId} -> ${paymentStatus}`);
+    console.log(`Webhook processed and verified: ${transactionId} -> ${verifiedStatus}`);
 
     // Fire admin webhook if configured and payment completed
-    if (adminWebhookUrl && paymentStatus === 'completed') {
+    if (adminWebhookUrl && verifiedStatus === 'completed') {
       try {
         await fetch(adminWebhookUrl, {
           method: 'POST',
@@ -98,7 +142,7 @@ serve(async (req) => {
             data: {
               transaction_id: transactionId,
               payment_method: paymentMethod,
-              amount,
+              amount: verifiedAmount,
               email: payload.email,
             }
           }),
