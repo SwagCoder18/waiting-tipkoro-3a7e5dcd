@@ -54,7 +54,8 @@ serve(async (req) => {
     const verifyData = await verifyResponse.json();
     console.log("Rupantor verify response:", verifyData);
 
-    const isCompleted = verifyData.status === "COMPLETED";
+    // Check for completed status - handle both string and boolean responses
+    const isCompleted = verifyData.status === "COMPLETED" || verifyData.status === true || verifyData.status === 1;
 
     if (isCompleted) {
       // Initialize Supabase client with service role
