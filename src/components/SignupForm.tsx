@@ -206,7 +206,7 @@ export const SignupForm: React.FC<SignupFormProps> = ({
 
         <div className="tipkoro-card bg-secondary/30">
           <p className="text-sm text-muted-foreground mb-2">
-            You&apos;ll be redirected to Rupantor Pay to complete payment
+            You&apos;ll be redirected to complete payment securely
           </p>
           <p className="text-2xl font-bold text-foreground">
             ৳150 <span className="text-sm font-normal text-muted-foreground">/month</span>
@@ -223,7 +223,7 @@ export const SignupForm: React.FC<SignupFormProps> = ({
         </Button>
 
         <p className="text-xs text-center text-muted-foreground">
-          Secure payment powered by Rupantor Pay
+          Secure payment processing
         </p>
       </form>
     );

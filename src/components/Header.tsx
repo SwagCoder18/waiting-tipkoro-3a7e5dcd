@@ -1,5 +1,6 @@
 import React from "react";
 import { HeartIcon } from "./icons/PaymentIcons";
+import { ThemeToggle } from "./ThemeToggle";
 
 export const Header: React.FC = () => {
   return (
@@ -11,17 +12,20 @@ export const Header: React.FC = () => {
           </div>
           <span>TipKoro</span>
         </a>
-        <nav className="hidden md:flex items-center gap-6 text-sm">
-          <a href="#offer" className="text-muted-foreground hover:text-foreground transition-colors">
-            Offer
-          </a>
-          <a href="#signup" className="text-muted-foreground hover:text-foreground transition-colors">
-            Join
-          </a>
-          <a href="#why" className="text-muted-foreground hover:text-foreground transition-colors">
-            Why TipKoro
-          </a>
-        </nav>
+        <div className="flex items-center gap-4">
+          <nav className="hidden md:flex items-center gap-6 text-sm">
+            <a href="#offer" className="text-muted-foreground hover:text-foreground transition-colors">
+              Offer
+            </a>
+            <a href="#signup" className="text-muted-foreground hover:text-foreground transition-colors">
+              Join
+            </a>
+            <a href="#why" className="text-muted-foreground hover:text-foreground transition-colors">
+              Why TipKoro
+            </a>
+          </nav>
+          <ThemeToggle />
+        </div>
       </div>
     </header>
   );
