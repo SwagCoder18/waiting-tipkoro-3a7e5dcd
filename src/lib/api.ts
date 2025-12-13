@@ -61,7 +61,7 @@ export async function createCheckout(params: CheckoutParams): Promise<CheckoutRe
     body: {
       fullname: params.fullname,
       email: params.email,
-      amount: params.amount || 150,
+      amount: params.amount || 10,
       successUrl,
       cancelUrl,
     },

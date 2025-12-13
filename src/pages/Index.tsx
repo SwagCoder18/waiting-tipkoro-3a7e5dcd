@@ -30,7 +30,7 @@ const Index: React.FC = () => {
       const result = await createCheckout({
         fullname: paymentData.fullname,
         email: paymentData.email,
-        amount: 150,
+        amount: 10,
       });
 
       if (result.payment_url) {
@@ -115,7 +115,7 @@ const Index: React.FC = () => {
             {/* Pricing Card */}
             <div className="tipkoro-card">
               <div className="flex items-baseline gap-2 mb-4">
-                <span className="text-4xl font-display font-bold">৳150</span>
+                <span className="text-4xl font-display font-bold">৳10</span>
                 <span className="text-muted-foreground">/month</span>
               </div>
 
@@ -186,7 +186,7 @@ const Index: React.FC = () => {
                   Complete Your Payment
                 </h2>
                 <p className="text-muted-foreground mt-2">
-                  Pay ৳150 for month 1 to activate your account
+                  Pay ৳10 for month 1 to activate your account
                 </p>
               </div>
               <SignupForm
