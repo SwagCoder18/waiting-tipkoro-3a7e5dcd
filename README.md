@@ -2,6 +2,8 @@
 
 A responsive, mobile-first landing page for TipKoro — a Bangladeshi-focused creator support platform similar to Ko-fi/BuyMeACoffee.
 
+[Go To Project in "Shovon" Profile](https://lovable.dev/projects/5ece1490-d039-4aa8-8ed2-a44e9b3b8e78)
+
 ## Features
 
 - **Hero Section**: Promo badge, headline, CTA with payment methods
