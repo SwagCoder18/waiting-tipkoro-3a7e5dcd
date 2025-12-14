@@ -95,6 +95,256 @@ export type Database = {
         }
         Relationships: []
       }
+      creator_subscriptions: {
+        Row: {
+          active_until: string | null
+          amount: number | null
+          billing_start: string | null
+          created_at: string | null
+          currency: string | null
+          id: string
+          payment_method: string | null
+          payment_status: string | null
+          payout_method: string | null
+          phone: string | null
+          profile_id: string
+          promo: boolean | null
+          signup_date: string | null
+          transaction_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          active_until?: string | null
+          amount?: number | null
+          billing_start?: string | null
+          created_at?: string | null
+          currency?: string | null
+          id?: string
+          payment_method?: string | null
+          payment_status?: string | null
+          payout_method?: string | null
+          phone?: string | null
+          profile_id: string
+          promo?: boolean | null
+          signup_date?: string | null
+          transaction_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          active_until?: string | null
+          amount?: number | null
+          billing_start?: string | null
+          created_at?: string | null
+          currency?: string | null
+          id?: string
+          payment_method?: string | null
+          payment_status?: string | null
+          payout_method?: string | null
+          phone?: string | null
+          profile_id?: string
+          promo?: boolean | null
+          signup_date?: string | null
+          transaction_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "creator_subscriptions_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          account_type: Database["public"]["Enums"]["account_type"] | null
+          avatar_url: string | null
+          bio: string | null
+          created_at: string | null
+          email: string | null
+          facebook: string | null
+          first_name: string | null
+          id: string
+          instagram: string | null
+          is_verified: boolean | null
+          last_name: string | null
+          onboarding_status:
+            | Database["public"]["Enums"]["onboarding_status"]
+            | null
+          other_link: string | null
+          total_received: number | null
+          total_supporters: number | null
+          twitter: string | null
+          updated_at: string | null
+          user_id: string
+          username: string | null
+          youtube: string | null
+        }
+        Insert: {
+          account_type?: Database["public"]["Enums"]["account_type"] | null
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string | null
+          email?: string | null
+          facebook?: string | null
+          first_name?: string | null
+          id?: string
+          instagram?: string | null
+          is_verified?: boolean | null
+          last_name?: string | null
+          onboarding_status?:
+            | Database["public"]["Enums"]["onboarding_status"]
+            | null
+          other_link?: string | null
+          total_received?: number | null
+          total_supporters?: number | null
+          twitter?: string | null
+          updated_at?: string | null
+          user_id: string
+          username?: string | null
+          youtube?: string | null
+        }
+        Update: {
+          account_type?: Database["public"]["Enums"]["account_type"] | null
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string | null
+          email?: string | null
+          facebook?: string | null
+          first_name?: string | null
+          id?: string
+          instagram?: string | null
+          is_verified?: boolean | null
+          last_name?: string | null
+          onboarding_status?:
+            | Database["public"]["Enums"]["onboarding_status"]
+            | null
+          other_link?: string | null
+          total_received?: number | null
+          total_supporters?: number | null
+          twitter?: string | null
+          updated_at?: string | null
+          user_id?: string
+          username?: string | null
+          youtube?: string | null
+        }
+        Relationships: []
+      }
+      tips: {
+        Row: {
+          amount: number
+          created_at: string | null
+          creator_id: string
+          currency: string | null
+          id: string
+          is_anonymous: boolean | null
+          message: string | null
+          payment_method: string | null
+          payment_status: string | null
+          supporter_email: string
+          supporter_id: string | null
+          supporter_name: string
+          transaction_id: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          creator_id: string
+          currency?: string | null
+          id?: string
+          is_anonymous?: boolean | null
+          message?: string | null
+          payment_method?: string | null
+          payment_status?: string | null
+          supporter_email: string
+          supporter_id?: string | null
+          supporter_name: string
+          transaction_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          creator_id?: string
+          currency?: string | null
+          id?: string
+          is_anonymous?: boolean | null
+          message?: string | null
+          payment_method?: string | null
+          payment_status?: string | null
+          supporter_email?: string
+          supporter_id?: string | null
+          supporter_name?: string
+          transaction_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tips_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tips_supporter_id_fkey"
+            columns: ["supporter_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      withdrawal_requests: {
+        Row: {
+          amount: number
+          created_at: string | null
+          currency: string | null
+          id: string
+          notes: string | null
+          payout_details: Json | null
+          payout_method: string
+          processed_at: string | null
+          profile_id: string
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          currency?: string | null
+          id?: string
+          notes?: string | null
+          payout_details?: Json | null
+          payout_method: string
+          processed_at?: string | null
+          profile_id: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          currency?: string | null
+          id?: string
+          notes?: string | null
+          payout_details?: Json | null
+          payout_method?: string
+          processed_at?: string | null
+          profile_id?: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "withdrawal_requests_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -103,7 +353,13 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      account_type: "supporter" | "creator"
+      onboarding_status:
+        | "pending"
+        | "account_type"
+        | "payment"
+        | "profile"
+        | "completed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -230,6 +486,15 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      account_type: ["supporter", "creator"],
+      onboarding_status: [
+        "pending",
+        "account_type",
+        "payment",
+        "profile",
+        "completed",
+      ],
+    },
   },
 } as const
