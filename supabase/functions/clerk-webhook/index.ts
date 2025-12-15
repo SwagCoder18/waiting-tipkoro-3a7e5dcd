@@ -1,6 +1,6 @@
 // Clerk webhook handler — adapted to your current "profiles" table schema
-import { Webhook } from "npm:svix@1.15.0";
-import { createClient } from "npm:@supabase/supabase-js@2.26.0";
+import { Webhook } from "https://esm.sh/svix@1.15.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.47.10";
 
 // CORS headers
 const corsHeaders = {
@@ -87,7 +87,7 @@ Deno.serve(async (req: Request) => {
       // Upsert by user_id to be idempotent
       const { data: upserted, error: upsertError } = await supabase
         .from('profiles')
-        .upsert(profile, { onConflict: ['user_id'] })
+        .upsert(profile, { onConflict: 'user_id' })
         .select()
         .single()
         ;
