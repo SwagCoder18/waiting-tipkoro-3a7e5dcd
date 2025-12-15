@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { SignInButton, SignUpButton, UserButton, useUser } from "@clerk/clerk-react";
 import { HeartIcon } from "./icons/PaymentIcons";
-import { Menu, X } from "lucide-react";
+import { Menu, X, LayoutGrid } from "lucide-react";
 
 export function TopNavbar({ className }: { className?: string }) {
   const { isSignedIn, isLoaded } = useUser();
@@ -60,7 +60,15 @@ export function TopNavbar({ className }: { className?: string }) {
                         Dashboard
                       </Button>
                     </Link>
-                    <UserButton afterSignOutUrl="/" />
+                    <UserButton afterSignOutUrl="/">
+                      <UserButton.MenuItems>
+                        <UserButton.Link
+                          label="Dashboard"
+                          labelIcon={<LayoutGrid className="w-4 h-4" />}
+                          href="/dashboard"
+                        />
+                      </UserButton.MenuItems>
+                    </UserButton>
                   </div>
                 ) : (
                   <>
@@ -127,7 +135,15 @@ export function TopNavbar({ className }: { className?: string }) {
                           Dashboard
                         </Button>
                       </Link>
-                      <UserButton afterSignOutUrl="/" />
+                      <UserButton afterSignOutUrl="/">
+                        <UserButton.MenuItems>
+                          <UserButton.Link
+                            label="Dashboard"
+                            labelIcon={<LayoutGrid className="w-4 h-4" />}
+                            href="/dashboard"
+                          />
+                        </UserButton.MenuItems>
+                      </UserButton>
                     </div>
                   ) : (
                     <div className="flex gap-2">

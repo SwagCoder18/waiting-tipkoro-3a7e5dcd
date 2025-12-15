@@ -7,6 +7,8 @@ import { MainFooter } from "@/components/MainFooter";
 import { LiveTipsFeed } from "@/components/LiveTipsFeed";
 import { Avatar } from "@/components/Avatar";
 import { Link } from "react-router-dom";
+import { SignUpButton } from "@clerk/clerk-react";
+import { FAQSection } from "@/components/FAQSection";
 import {
   Heart,
   Zap,
@@ -58,12 +60,12 @@ function Index() {
               </p>
             </div>
             <div className="flex flex-col items-center gap-3">
-              <Link to="/waitlist">
+              <SignUpButton mode="modal">
                 <Button variant="hero" size="xl" className="gap-2 bg-accent text-accent-foreground hover:bg-tipkoro-gold-hover shadow-tipkoro hover:shadow-tipkoro-hover transition-all duration-300">
                   <Rocket className="w-6 h-6" />
                   Start My Creator Page
                 </Button>
-              </Link>
+              </SignUpButton>
               <span className="text-sm text-muted-foreground">
                 It's free and takes less than a minute.
               </span>
@@ -167,11 +169,11 @@ function Index() {
                   </div>
                 ))}
               </div>
-              <Link to="/waitlist" className="mt-8">
-                <Button variant="outline" className="w-full rounded-xl border-2 h-12 text-base font-semibold hover:border-primary/20 hover:bg-secondary">
+              <SignUpButton mode="modal">
+                <Button variant="outline" className="w-full rounded-xl border-2 h-12 text-base font-semibold hover:border-primary/20 hover:bg-secondary mt-8">
                   Get Started Free
                 </Button>
-              </Link>
+              </SignUpButton>
             </div>
             
             {/* Creator Plan */}
@@ -228,11 +230,11 @@ function Index() {
                 <span>Withdrawals in 3-5 business days</span>
               </div>
               
-              <Link to="/waitlist" className="mt-6">
-                <Button className="w-full h-12 text-base bg-accent text-accent-foreground hover:bg-tipkoro-gold-hover font-bold">
+              <SignUpButton mode="modal">
+                <Button className="w-full h-12 text-base bg-accent text-accent-foreground hover:bg-tipkoro-gold-hover font-bold mt-6">
                   Start Creating
                 </Button>
-              </Link>
+              </SignUpButton>
             </div>
           </div>
         </div>
@@ -299,39 +301,8 @@ function Index() {
         </div>
       </div>
 
-      {/* Creator Highlights */}
-      <div className="flex w-full flex-col items-center bg-background px-6 py-24 md:py-16">
-        <div className="flex w-full max-w-[1280px] flex-col items-center gap-12">
-          <div className="flex flex-col items-center gap-4">
-            <h2 className="text-4xl font-display font-bold text-foreground text-center tracking-tight md:text-5xl">
-              Creator Highlights
-            </h2>
-          </div>
-          <div className="flex w-full items-start justify-center gap-6 flex-wrap">
-            {[
-              { name: "Nabila", category: "Artist", icon: Palette, supporters: 85, location: "Chittagong", avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&h=200&fit=crop" },
-              { name: "Sabbir", category: "Musician", icon: Music, supporters: 42, location: "Dhaka", avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop" },
-              { name: "Rima", category: "Video Creator", icon: Video, supporters: 127, location: "Sylhet", avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop" },
-              { name: "Fahim", category: "Developer", icon: Code, supporters: 63, location: "Dhaka", avatar: "https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=200&h=200&fit=crop" },
-            ].map((creator) => (
-              <div key={creator.name} className="tipkoro-card flex min-w-[240px] flex-col items-center gap-4 bg-secondary/30 hover:shadow-tipkoro-hover hover:-translate-y-1 transition-all duration-300">
-                <Avatar size="x-large" image={creator.avatar}>{creator.name[0]}</Avatar>
-                <div className="flex flex-col items-center gap-2">
-                  <span className="text-lg font-bold font-display text-foreground">{creator.name}</span>
-                  <Badge variant="neutral" icon={<creator.icon className="w-3 h-3" />}>{creator.category}</Badge>
-                  <span className="text-sm text-muted-foreground font-medium">{creator.supporters} supporters</span>
-                  <span className="text-xs text-muted-foreground/80 uppercase tracking-wide">{creator.location}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-          <Link to="/waitlist">
-            <Button variant="outline" className="rounded-xl border-2 hover:border-primary/20 hover:bg-secondary gap-2">
-              Discover All Creators <ArrowRight className="w-4 h-4" />
-            </Button>
-          </Link>
-        </div>
-      </div>
+      {/* FAQ Section */}
+      <FAQSection />
 
       {/* CTA Section */}
       <div className="flex w-full flex-col items-center bg-accent/10 px-6 py-24 md:py-16">
@@ -342,12 +313,12 @@ function Index() {
           <p className="text-xl text-muted-foreground">
             Join thousands of Bangladeshi creators who are already earning with TipKoro.
           </p>
-          <Link to="/waitlist">
+          <SignUpButton mode="modal">
             <Button variant="hero" size="xl" className="gap-2 bg-accent text-accent-foreground hover:bg-tipkoro-gold-hover shadow-tipkoro hover:shadow-tipkoro-hover transition-all duration-300">
               <Rocket className="w-6 h-6" />
               Get Started Now
             </Button>
-          </Link>
+          </SignUpButton>
         </div>
       </div>
 

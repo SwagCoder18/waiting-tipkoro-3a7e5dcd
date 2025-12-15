@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const DUMMY_PAYMENTS = (import.meta.env.VITE_DUMMY_PAYMENTS as string) === "true";
 
 interface CheckoutParams {
   fullname: string;
@@ -32,16 +33,16 @@ interface VerifyResponse {
 interface ProfileData {
   transaction_id: string;
   username: string;
-  first_name: string;
-  last_name: string;
-  email: string;
+  first_name?: string;
+  last_name?: string;
+  email?: string;
   bio: string;
   category: string;
   twitter?: string;
   instagram?: string;
   youtube?: string;
   other_link?: string;
-  payout_method: string;
+  payout_method?: string;
   phone?: string;
 }
 
@@ -56,6 +57,15 @@ interface CompleteSignupResponse {
 export async function createCheckout(params: CheckoutParams): Promise<CheckoutResponse> {
   const successUrl = `${window.location.origin}/payment/success`;
   const cancelUrl = `${window.location.origin}/payment/cancel`;
+
+  if (DUMMY_PAYMENTS) {
+    const txn = `dummy_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const amount = params.amount || 10;
+    const url = `${successUrl}?transactionId=${encodeURIComponent(txn)}&paymentMethod=Dummy&paymentAmount=${encodeURIComponent(
+      amount
+    )}`;
+    return { payment_url: url };
+  }
 
   const { data, error } = await supabase.functions.invoke('rupantor-checkout', {
     body: {
@@ -76,6 +86,17 @@ export async function createCheckout(params: CheckoutParams): Promise<CheckoutRe
 }
 
 export async function verifyPayment(params: VerifyParams): Promise<VerifyResponse> {
+  if (DUMMY_PAYMENTS) {
+    return {
+      verified: true,
+      transaction_id: params.transaction_id,
+      status: 'COMPLETED',
+      amount: params.payment_amount ? String(params.payment_amount) : '10',
+      payment_method: params.payment_method || 'Dummy',
+      email: '',
+    };
+  }
+
   const { data, error } = await supabase.functions.invoke('rupantor-verify', {
     body: params,
   });
@@ -94,6 +115,15 @@ export async function verifyPayment(params: VerifyParams): Promise<VerifyRespons
 }
 
 export async function completeSignup(profileData: ProfileData): Promise<CompleteSignupResponse> {
+  if (DUMMY_PAYMENTS) {
+    return {
+      success: true,
+      username: profileData.username,
+      active_until: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+      billing_start: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+    };
+  }
+
   const { data, error } = await supabase.functions.invoke('complete-signup', {
     body: profileData,
   });

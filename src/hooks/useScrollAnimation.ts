@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 
 export function useScrollAnimation<T extends HTMLElement = HTMLDivElement>(
   options: IntersectionObserverInit = {}
@@ -39,7 +39,7 @@ export function AnimatedSection({
   className = '',
   delay = 0 
 }: { 
-  children: React.ReactNode; 
+  children: ReactNode; 
   className?: string;
   delay?: number;
 }) {

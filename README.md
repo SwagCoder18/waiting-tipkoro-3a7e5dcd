@@ -150,8 +150,8 @@ Fonts:
 ## Local Development
 
 ```bash
-bun install
-bun run dev
+npm install
+npm run dev
 ```
 
 ## Environment Variables (for production)

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Button } from "./ui/button";
 import { PaymentMethodSelector } from "./PaymentMethodSelector";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 
 const categories = [
   "Content Creator",
@@ -30,18 +31,12 @@ interface SignupFormProps {
 }
 
 export interface FormData {
-  username: string;
-  firstName: string;
-  lastName: string;
-  email: string;
   bio: string;
   category: string;
   twitter: string;
   instagram: string;
   youtube: string;
   otherLink: string;
-  payoutMethod: string;
-  phone: string;
 }
 
 export const SignupForm: React.FC<SignupFormProps> = ({
@@ -56,18 +51,12 @@ export const SignupForm: React.FC<SignupFormProps> = ({
     email: "",
   });
   const [formData, setFormData] = useState<FormData>({
-    username: "",
-    firstName: "",
-    lastName: "",
-    email: "",
     bio: "",
     category: "",
     twitter: "",
     instagram: "",
     youtube: "",
     otherLink: "",
-    payoutMethod: "",
-    phone: "",
   });
   const [errors, setErrors] = useState<Partial<Record<keyof FormData | "fullname", string>>>({});
 
@@ -109,28 +98,6 @@ export const SignupForm: React.FC<SignupFormProps> = ({
   const validateStep2 = () => {
     const newErrors: Partial<Record<keyof FormData, string>> = {};
 
-    if (!formData.username.trim()) {
-      newErrors.username = "Username is required";
-    } else if (formData.username.length < 3) {
-      newErrors.username = "Username must be at least 3 characters";
-    } else if (!/^[a-zA-Z0-9_]+$/.test(formData.username)) {
-      newErrors.username = "Only letters, numbers, and underscores allowed";
-    }
-
-    if (!formData.firstName.trim()) {
-      newErrors.firstName = "First name is required";
-    }
-
-    if (!formData.lastName.trim()) {
-      newErrors.lastName = "Last name is required";
-    }
-
-    if (!formData.email.trim()) {
-      newErrors.email = "Email is required";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = "Please enter a valid email";
-    }
-
     if (!formData.bio.trim()) {
       newErrors.bio = "Bio is required";
     } else if (formData.bio.length > 200) {
@@ -139,10 +106,6 @@ export const SignupForm: React.FC<SignupFormProps> = ({
 
     if (!formData.category) {
       newErrors.category = "Please select a category";
-    }
-
-    if (!formData.payoutMethod) {
-      newErrors.payoutMethod = "Please select a payout method";
     }
 
     setErrors(newErrors);
@@ -231,90 +194,6 @@ export const SignupForm: React.FC<SignupFormProps> = ({
 
   return (
     <form onSubmit={handleDetailsSubmit} className="space-y-5">
-      {/* Username */}
-      <div>
-        <label htmlFor="username" className="tipkoro-label">
-          Username <span className="text-destructive">*</span>
-        </label>
-        <div className="flex items-center">
-          <span className="px-3 py-3 bg-muted rounded-l-xl border border-r-0 border-border text-muted-foreground text-sm">
-            tipkoro.com/
-          </span>
-          <input
-            type="text"
-            id="username"
-            name="username"
-            value={formData.username}
-            onChange={handleInputChange}
-            className="tipkoro-input rounded-l-none"
-            placeholder="yourname"
-            aria-describedby={errors.username ? "username-error" : undefined}
-          />
-        </div>
-        {errors.username && (
-          <p id="username-error" className="text-sm text-destructive mt-1">
-            {errors.username}
-          </p>
-        )}
-      </div>
-
-      {/* Name row */}
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label htmlFor="firstName" className="tipkoro-label">
-            First Name <span className="text-destructive">*</span>
-          </label>
-          <input
-            type="text"
-            id="firstName"
-            name="firstName"
-            value={formData.firstName}
-            onChange={handleInputChange}
-            className="tipkoro-input"
-            placeholder="John"
-          />
-          {errors.firstName && (
-            <p className="text-sm text-destructive mt-1">{errors.firstName}</p>
-          )}
-        </div>
-        <div>
-          <label htmlFor="lastName" className="tipkoro-label">
-            Last Name <span className="text-destructive">*</span>
-          </label>
-          <input
-            type="text"
-            id="lastName"
-            name="lastName"
-            value={formData.lastName}
-            onChange={handleInputChange}
-            className="tipkoro-input"
-            placeholder="Doe"
-          />
-          {errors.lastName && (
-            <p className="text-sm text-destructive mt-1">{errors.lastName}</p>
-          )}
-        </div>
-      </div>
-
-      {/* Email */}
-      <div>
-        <label htmlFor="detailsEmail" className="tipkoro-label">
-          Email <span className="text-destructive">*</span>
-        </label>
-        <input
-          type="email"
-          id="detailsEmail"
-          name="email"
-          value={formData.email}
-          onChange={handleInputChange}
-          className="tipkoro-input"
-          placeholder="john@example.com"
-        />
-        {errors.email && (
-          <p className="text-sm text-destructive mt-1">{errors.email}</p>
-        )}
-      </div>
-
       {/* Bio */}
       <div>
         <label htmlFor="bio" className="tipkoro-label">
@@ -342,20 +221,18 @@ export const SignupForm: React.FC<SignupFormProps> = ({
         <label htmlFor="category" className="tipkoro-label">
           Category <span className="text-destructive">*</span>
         </label>
-        <select
-          id="category"
-          name="category"
-          value={formData.category}
-          onChange={handleInputChange}
-          className="tipkoro-input"
-        >
-          <option value="">Select your category</option>
-          {categories.map((cat) => (
-            <option key={cat} value={cat}>
-              {cat}
-            </option>
-          ))}
-        </select>
+        <Select value={formData.category} onValueChange={(v) => setFormData({ ...formData, category: v })}>
+          <SelectTrigger className="tipkoro-input">
+            <SelectValue placeholder="Select your category" />
+          </SelectTrigger>
+          <SelectContent>
+            {categories.map((cat) => (
+              <SelectItem key={cat} value={cat}>
+                {cat}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         {errors.category && (
           <p className="text-sm text-destructive mt-1">{errors.category}</p>
         )}
@@ -365,76 +242,32 @@ export const SignupForm: React.FC<SignupFormProps> = ({
       <div className="space-y-3">
         <label className="tipkoro-label">Social Links (Optional)</label>
         <input
-          type="url"
           name="twitter"
           value={formData.twitter}
           onChange={handleInputChange}
           className="tipkoro-input"
-          placeholder="Twitter/X URL"
+          placeholder="twitter.com/username"
         />
         <input
-          type="url"
           name="instagram"
           value={formData.instagram}
           onChange={handleInputChange}
           className="tipkoro-input"
-          placeholder="Instagram URL"
+          placeholder="instagram.com/username"
         />
         <input
-          type="url"
           name="youtube"
           value={formData.youtube}
           onChange={handleInputChange}
           className="tipkoro-input"
-          placeholder="YouTube URL"
+          placeholder="youtube.com/@channel"
         />
         <input
-          type="url"
           name="otherLink"
           value={formData.otherLink}
           onChange={handleInputChange}
           className="tipkoro-input"
-          placeholder="Other link"
-        />
-      </div>
-
-      {/* Payout Method */}
-      <div>
-        <label htmlFor="payoutMethod" className="tipkoro-label">
-          Preferred Payout Method <span className="text-destructive">*</span>
-        </label>
-        <select
-          id="payoutMethod"
-          name="payoutMethod"
-          value={formData.payoutMethod}
-          onChange={handleInputChange}
-          className="tipkoro-input"
-        >
-          <option value="">Select payout method</option>
-          {payoutMethods.map((method) => (
-            <option key={method.id} value={method.id}>
-              {method.label}
-            </option>
-          ))}
-        </select>
-        {errors.payoutMethod && (
-          <p className="text-sm text-destructive mt-1">{errors.payoutMethod}</p>
-        )}
-      </div>
-
-      {/* Phone */}
-      <div>
-        <label htmlFor="phone" className="tipkoro-label">
-          Phone Number (Optional)
-        </label>
-        <input
-          type="tel"
-          id="phone"
-          name="phone"
-          value={formData.phone}
-          onChange={handleInputChange}
-          className="tipkoro-input"
-          placeholder="+880 1XXX-XXXXXX"
+          placeholder="other website or link"
         />
       </div>
 

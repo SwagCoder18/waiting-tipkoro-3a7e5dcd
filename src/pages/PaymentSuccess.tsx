@@ -7,20 +7,16 @@ import { SuccessCard } from "@/components/SuccessCard";
 import { Confetti } from "@/components/Confetti";
 import { verifyPayment, completeSignup } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
+import { useProfile } from "@/hooks/useProfile";
+import { useUser } from "@clerk/clerk-react";
 
 interface FormData {
-  username: string;
-  firstName: string;
-  lastName: string;
-  email: string;
   bio: string;
   category: string;
   twitter: string;
   instagram: string;
   youtube: string;
   otherLink: string;
-  payoutMethod: string;
-  phone: string;
 }
 
 const PaymentSuccess: React.FC = () => {
@@ -32,6 +28,8 @@ const PaymentSuccess: React.FC = () => {
   const [isComplete, setIsComplete] = useState(false);
   const [transactionId, setTransactionId] = useState<string | null>(null);
   const [verifiedEmail, setVerifiedEmail] = useState<string>("");
+  const { profile } = useProfile();
+  const { user } = useUser();
 
   useEffect(() => {
     const txnId = searchParams.get("transactionId");
@@ -94,20 +92,35 @@ const PaymentSuccess: React.FC = () => {
 
     setIsSubmitting(true);
     try {
+      const presetUsername =
+        profile?.username ||
+        user?.username ||
+        (verifiedEmail ? verifiedEmail.split("@")[0] : "");
+      if (!presetUsername) {
+        toast({
+          title: "Username missing",
+          description: "We could not determine your username automatically.",
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+      const ensureHttp = (url?: string) => {
+        if (!url) return undefined;
+        const trimmed = url.trim();
+        if (!trimmed) return undefined;
+        if (/^https?:\/\//i.test(trimmed)) return trimmed;
+        return `https://${trimmed}`;
+      };
       const result = await completeSignup({
         transaction_id: transactionId,
-        username: formData.username,
-        first_name: formData.firstName,
-        last_name: formData.lastName,
-        email: formData.email || verifiedEmail,
+        username: presetUsername,
         bio: formData.bio,
         category: formData.category,
-        twitter: formData.twitter || undefined,
-        instagram: formData.instagram || undefined,
-        youtube: formData.youtube || undefined,
-        other_link: formData.otherLink || undefined,
-        payout_method: formData.payoutMethod,
-        phone: formData.phone || undefined,
+        twitter: ensureHttp(formData.twitter),
+        instagram: ensureHttp(formData.instagram),
+        youtube: ensureHttp(formData.youtube),
+        other_link: ensureHttp(formData.otherLink),
       });
 
       if (result.success) {
