@@ -58,7 +58,7 @@ export const SignupForm: React.FC<SignupFormProps> = ({
     youtube: "",
     otherLink: "",
   });
-  const [errors, setErrors] = useState<Partial<Record<keyof FormData | "fullname", string>>>({});
+  const [errors, setErrors] = useState<Partial<Record<keyof FormData | "fullname" | "email", string>>>({});
 
   const handlePaymentInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;

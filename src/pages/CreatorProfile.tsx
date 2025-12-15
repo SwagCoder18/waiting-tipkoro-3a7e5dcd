@@ -185,7 +185,7 @@ export default function CreatorProfile() {
           <div className="lg:col-span-2">
             <div className="tipkoro-card">
               <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
-                <Avatar size="xx-large" image={creator?.avatar_url || undefined}>
+                <Avatar size="x-large" image={creator?.avatar_url || undefined}>
                   {(creator?.first_name?.[0] || creator?.username?.[0] || '?').toUpperCase()}
                 </Avatar>
                 

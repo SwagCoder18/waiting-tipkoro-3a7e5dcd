@@ -33,29 +33,3 @@ export function useScrollAnimation<T extends HTMLElement = HTMLDivElement>(
 
   return { ref, isVisible };
 }
-
-export function AnimatedSection({ 
-  children, 
-  className = '',
-  delay = 0 
-}: { 
-  children: ReactNode; 
-  className?: string;
-  delay?: number;
-}) {
-  const { ref, isVisible } = useScrollAnimation();
-  
-  return (
-    <div
-      ref={ref}
-      className={`transition-all duration-700 ${className}`}
-      style={{
-        opacity: isVisible ? 1 : 0,
-        transform: isVisible ? 'translateY(0)' : 'translateY(30px)',
-        transitionDelay: `${delay}ms`
-      }}
-    >
-      {children}
-    </div>
-  );
-}
