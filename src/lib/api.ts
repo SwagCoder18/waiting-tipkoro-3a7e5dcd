@@ -7,6 +7,7 @@ interface CheckoutParams {
   fullname: string;
   email: string;
   amount?: number;
+  reference_id?: string;
 }
 
 interface CheckoutResponse {
@@ -74,6 +75,7 @@ export async function createCheckout(params: CheckoutParams): Promise<CheckoutRe
       amount: params.amount || 10,
       successUrl,
       cancelUrl,
+      reference_id: params.reference_id,
     },
   });
 

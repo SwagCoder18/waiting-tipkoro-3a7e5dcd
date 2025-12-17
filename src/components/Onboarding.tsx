@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useProfile } from "@/hooks/useProfile";
+import { useUsernameCheck } from "@/hooks/useUsernameCheck";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -7,18 +8,17 @@ import { HeartIcon } from "./icons/PaymentIcons";
 import { toast } from "@/hooks/use-toast";
 import { createCheckout } from "@/lib/api";
 import { useUser } from "@clerk/clerk-react";
-import { Heart, Rocket, User, Link as LinkIcon, Check } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { Heart, Rocket, Link as LinkIcon, ArrowLeft, Check, X, Loader2 } from "lucide-react";
 
 type OnboardingStep = 'account_type' | 'payment' | 'profile';
 
 export function Onboarding() {
   const { user } = useUser();
   const { profile, updateProfile, refetch } = useProfile();
-  const [currentStep, setCurrentStep] = useState<OnboardingStep>(
-    profile?.onboarding_status === 'pending' ? 'account_type' : 
-    profile?.onboarding_status as OnboardingStep || 'account_type'
-  );
+  const [currentStep, setCurrentStep] = useState<OnboardingStep>('account_type');
   const [isLoading, setIsLoading] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
   
   const [formData, setFormData] = useState({
     username: '',
@@ -30,40 +30,91 @@ export function Onboarding() {
     other_link: ''
   });
 
+  // Username availability check
+  const { isChecking: isCheckingUsername, isAvailable: isUsernameAvailable, error: usernameError } = 
+    useUsernameCheck(formData.username, user?.id);
+
+  // Sync step with profile status on mount
+  useEffect(() => {
+    if (profile && !isInitialized) {
+      const status = profile.onboarding_status;
+      if (status === 'pending' || status === 'account_type') {
+        setCurrentStep('account_type');
+      } else if (status === 'payment') {
+        setCurrentStep('payment');
+      } else if (status === 'profile') {
+        setCurrentStep('profile');
+      }
+      setIsInitialized(true);
+    }
+  }, [profile, isInitialized]);
+
   const handleAccountTypeSelect = async (type: 'supporter' | 'creator') => {
     setIsLoading(true);
     
-    if (type === 'supporter') {
-      // Supporters skip payment and go straight to profile
-      await updateProfile({ 
-        account_type: 'supporter', 
-        onboarding_status: 'profile' 
+    try {
+      if (type === 'supporter') {
+        await updateProfile({ 
+          account_type: 'supporter', 
+          onboarding_status: 'profile' 
+        });
+        setCurrentStep('profile');
+      } else {
+        await updateProfile({ 
+          account_type: 'creator', 
+          onboarding_status: 'payment' 
+        });
+        setCurrentStep('payment');
+      }
+    } catch (error) {
+      console.error('Error selecting account type:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save your selection. Please try again.",
+        variant: "destructive",
       });
-      setCurrentStep('profile');
-    } else {
-      // Creators need to pay first
-      await updateProfile({ 
-        account_type: 'creator', 
-        onboarding_status: 'payment' 
-      });
-      setCurrentStep('payment');
+    } finally {
+      setIsLoading(false);
     }
-    
-    setIsLoading(false);
   };
 
   const handlePayment = async () => {
+    if (!profile?.id) {
+      toast({
+        title: "Error",
+        description: "Profile not found. Please refresh the page.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
     try {
+      // Create pending subscription record BEFORE redirecting to payment
+      const { error: subscriptionError } = await supabase
+        .from('creator_subscriptions')
+        .insert({
+          profile_id: profile.id,
+          amount: 10,
+          payment_status: 'pending',
+          promo: true,
+        });
+
+      if (subscriptionError) {
+        // If already exists, that's fine - user might be retrying
+        if (!subscriptionError.message.includes('duplicate')) {
+          throw subscriptionError;
+        }
+      }
+
       const result = await createCheckout({
         fullname: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'Creator',
         email: user?.primaryEmailAddress?.emailAddress || '',
         amount: 10,
+        reference_id: profile.id, // Pass profile ID as reference
       });
 
       if (result.payment_url) {
-        // Store that we're in onboarding in localStorage so we can resume
-        localStorage.setItem('tipkoro_onboarding_profile_id', profile?.id || '');
         window.location.href = result.payment_url;
       } else {
         toast({
@@ -72,13 +123,33 @@ export function Onboarding() {
           variant: "destructive",
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Payment error:", error);
       toast({
         title: "Error",
-        description: "Something went wrong. Please try again.",
+        description: error.message || "Something went wrong. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleBack = async () => {
+    setIsLoading(true);
+    try {
+      if (currentStep === 'payment') {
+        await updateProfile({ 
+          account_type: 'supporter', 
+          onboarding_status: 'account_type' 
+        });
+        setCurrentStep('account_type');
+      } else if (currentStep === 'profile' && profile?.account_type === 'supporter') {
+        await updateProfile({ onboarding_status: 'account_type' });
+        setCurrentStep('account_type');
+      }
+    } catch (error) {
+      console.error('Error going back:', error);
     } finally {
       setIsLoading(false);
     }
@@ -96,12 +167,10 @@ export function Onboarding() {
       return;
     }
 
-    // Validate username format
-    const usernameRegex = /^[a-zA-Z0-9_]+$/;
-    if (!usernameRegex.test(formData.username)) {
+    if (!isUsernameAvailable) {
       toast({
         title: "Invalid username",
-        description: "Username can only contain letters, numbers, and underscores.",
+        description: usernameError || "Please choose a different username.",
         variant: "destructive",
       });
       return;
@@ -109,7 +178,6 @@ export function Onboarding() {
 
     setIsLoading(true);
     
-    // Clean up social links - remove https:// if provided
     const cleanLink = (link: string) => {
       if (!link) return null;
       return link.replace(/^https?:\/\//, '').trim() || null;
@@ -145,6 +213,16 @@ export function Onboarding() {
     setIsLoading(false);
   };
 
+  const getStepNumber = () => {
+    if (currentStep === 'account_type') return 1;
+    if (currentStep === 'payment') return 2;
+    return profile?.account_type === 'creator' ? 3 : 2;
+  };
+
+  const getTotalSteps = () => {
+    return profile?.account_type === 'creator' ? 3 : 2;
+  };
+
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-lg">
@@ -157,12 +235,26 @@ export function Onboarding() {
         </div>
 
         {/* Progress */}
-        <div className="flex items-center justify-center gap-2 mb-8">
-          <div className={`w-3 h-3 rounded-full ${currentStep === 'account_type' ? 'bg-accent' : 'bg-muted'}`} />
-          <div className={`w-8 h-0.5 ${currentStep !== 'account_type' ? 'bg-accent' : 'bg-muted'}`} />
-          <div className={`w-3 h-3 rounded-full ${currentStep === 'payment' ? 'bg-accent' : currentStep === 'profile' ? 'bg-accent' : 'bg-muted'}`} />
-          <div className={`w-8 h-0.5 ${currentStep === 'profile' ? 'bg-accent' : 'bg-muted'}`} />
-          <div className={`w-3 h-3 rounded-full ${currentStep === 'profile' ? 'bg-accent' : 'bg-muted'}`} />
+        <div className="flex flex-col items-center gap-2 mb-8">
+          <div className="flex items-center gap-2">
+            {[1, 2, 3].slice(0, getTotalSteps()).map((step, idx) => (
+              <React.Fragment key={step}>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
+                  getStepNumber() >= step 
+                    ? 'bg-accent text-accent-foreground' 
+                    : 'bg-muted text-muted-foreground'
+                }`}>
+                  {getStepNumber() > step ? <Check className="w-4 h-4" /> : step}
+                </div>
+                {idx < getTotalSteps() - 1 && (
+                  <div className={`w-12 h-0.5 ${getStepNumber() > step ? 'bg-accent' : 'bg-muted'}`} />
+                )}
+              </React.Fragment>
+            ))}
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Step {getStepNumber()} of {getTotalSteps()}
+          </p>
         </div>
 
         {/* Step Content */}
@@ -178,7 +270,7 @@ export function Onboarding() {
                 <button
                   onClick={() => handleAccountTypeSelect('supporter')}
                   disabled={isLoading}
-                  className="tipkoro-card flex items-start gap-4 p-5 text-left hover:border-accent/50 hover:bg-accent/5 transition-all cursor-pointer"
+                  className="tipkoro-card flex items-start gap-4 p-5 text-left hover:border-accent/50 hover:bg-accent/5 transition-all cursor-pointer disabled:opacity-50"
                 >
                   <div className="p-3 rounded-xl bg-primary/10">
                     <Heart className="w-6 h-6 text-primary" />
@@ -194,7 +286,7 @@ export function Onboarding() {
                 <button
                   onClick={() => handleAccountTypeSelect('creator')}
                   disabled={isLoading}
-                  className="tipkoro-card flex items-start gap-4 p-5 text-left hover:border-accent/50 hover:bg-accent/5 transition-all cursor-pointer border-2 border-tipkoro-gold"
+                  className="tipkoro-card flex items-start gap-4 p-5 text-left hover:border-accent/50 hover:bg-accent/5 transition-all cursor-pointer border-2 border-tipkoro-gold disabled:opacity-50"
                 >
                   <div className="p-3 rounded-xl bg-accent/20">
                     <Rocket className="w-6 h-6 text-tipkoro-dark" />
@@ -210,11 +302,27 @@ export function Onboarding() {
                   </div>
                 </button>
               </div>
+
+              {isLoading && (
+                <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span className="text-sm">Saving...</span>
+                </div>
+              )}
             </div>
           )}
 
           {currentStep === 'payment' && (
             <div className="space-y-6">
+              <button
+                onClick={handleBack}
+                disabled={isLoading}
+                className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Back
+              </button>
+
               <div className="text-center">
                 <h2 className="text-2xl font-display font-bold mb-2">Activate Your Creator Account</h2>
                 <p className="text-muted-foreground">Pay ৳10 to get started with 3 months access</p>
@@ -240,7 +348,14 @@ export function Onboarding() {
                 disabled={isLoading}
                 className="w-full h-12 bg-accent text-accent-foreground hover:bg-tipkoro-gold-hover"
               >
-                {isLoading ? "Processing..." : "Pay ৳10 & Activate"}
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  "Pay ৳10 & Activate"
+                )}
               </Button>
               
               <button 
@@ -248,7 +363,8 @@ export function Onboarding() {
                   updateProfile({ account_type: 'supporter', onboarding_status: 'profile' });
                   setCurrentStep('profile');
                 }}
-                className="w-full text-sm text-muted-foreground hover:text-foreground"
+                disabled={isLoading}
+                className="w-full text-sm text-muted-foreground hover:text-foreground disabled:opacity-50"
               >
                 Continue as Supporter instead
               </button>
@@ -257,6 +373,18 @@ export function Onboarding() {
 
           {currentStep === 'profile' && (
             <form onSubmit={handleProfileSubmit} className="space-y-6">
+              {profile?.account_type === 'supporter' && (
+                <button
+                  type="button"
+                  onClick={handleBack}
+                  disabled={isLoading}
+                  className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  Back
+                </button>
+              )}
+
               <div className="text-center">
                 <h2 className="text-2xl font-display font-bold mb-2">Complete Your Profile</h2>
                 <p className="text-muted-foreground">Tell us a bit about yourself</p>
@@ -268,14 +396,39 @@ export function Onboarding() {
                     Username <span className="text-destructive">*</span>
                   </label>
                   <div className="flex items-center gap-2">
-                    <span className="text-muted-foreground">tipkoro.com/</span>
-                    <Input
-                      value={formData.username}
-                      onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                      placeholder="yourname"
-                      className="tipkoro-input flex-1"
-                    />
+                    <span className="text-muted-foreground text-sm">tipkoro.com/</span>
+                    <div className="relative flex-1">
+                      <Input
+                        value={formData.username}
+                        onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                        placeholder="yourname"
+                        className={`tipkoro-input pr-10 ${
+                          formData.username.length >= 3 
+                            ? isUsernameAvailable 
+                              ? 'border-success focus:ring-success' 
+                              : 'border-destructive focus:ring-destructive'
+                            : ''
+                        }`}
+                      />
+                      {formData.username.length >= 3 && (
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                          {isCheckingUsername ? (
+                            <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                          ) : isUsernameAvailable ? (
+                            <Check className="w-4 h-4 text-success" />
+                          ) : (
+                            <X className="w-4 h-4 text-destructive" />
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
+                  {usernameError && (
+                    <p className="text-xs text-destructive mt-1">{usernameError}</p>
+                  )}
+                  {formData.username.length >= 3 && isUsernameAvailable && (
+                    <p className="text-xs text-success mt-1">Username is available!</p>
+                  )}
                 </div>
                 
                 <div>
@@ -287,12 +440,13 @@ export function Onboarding() {
                     className="tipkoro-input min-h-[100px]"
                     maxLength={300}
                   />
+                  <p className="text-xs text-muted-foreground mt-1">{formData.bio.length}/300</p>
                 </div>
                 
                 <div className="space-y-3">
                   <label className="tipkoro-label flex items-center gap-2">
                     <LinkIcon className="w-4 h-4" />
-                    Social Links
+                    Social Links <span className="text-muted-foreground font-normal">(optional)</span>
                   </label>
                   <Input
                     value={formData.twitter}
@@ -329,10 +483,17 @@ export function Onboarding() {
               
               <Button 
                 type="submit"
-                disabled={isLoading}
+                disabled={isLoading || (formData.username.length >= 3 && !isUsernameAvailable)}
                 className="w-full h-12 bg-accent text-accent-foreground hover:bg-tipkoro-gold-hover"
               >
-                {isLoading ? "Saving..." : "Complete Setup"}
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  "Complete Setup"
+                )}
               </Button>
             </form>
           )}

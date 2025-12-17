@@ -7,19 +7,23 @@ import { verifyPayment } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useUser } from "@clerk/clerk-react";
-import { Check, Download, Share2, Home, ArrowRight } from "lucide-react";
+import { useProfile } from "@/hooks/useProfile";
+import { Check, Download, Share2, Home, ArrowRight, Loader2 } from "lucide-react";
 import { Confetti } from "@/components/Confetti";
 
 const PaymentSuccess: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { user } = useUser();
+  const { user, isLoaded: isUserLoaded } = useUser();
+  const { profile, refetch: refetchProfile } = useProfile();
   const [isVerifying, setIsVerifying] = useState(true);
   const [isVerified, setIsVerified] = useState(false);
   const [paymentType, setPaymentType] = useState<"onboarding" | "tip" | null>(null);
   const [tipData, setTipData] = useState<any>(null);
 
   useEffect(() => {
+    if (!isUserLoaded) return;
+
     const txnId = searchParams.get("transactionId");
     const paymentMethod = searchParams.get("paymentMethod");
     const paymentAmount = searchParams.get("paymentAmount");
@@ -45,40 +49,17 @@ const PaymentSuccess: React.FC = () => {
         if (result.verified) {
           setIsVerified(true);
 
-          // Check if this is an onboarding payment
-          const onboardingProfileId = localStorage.getItem("tipkoro_onboarding_profile_id");
+          // Check for tip data in localStorage (for non-logged-in supporters)
           const storedTipData = localStorage.getItem("tipkoro_tip_data");
 
-          if (onboardingProfileId) {
-            setPaymentType("onboarding");
-            // Update creator subscription
-            const { error } = await supabase
-              .from("creator_subscriptions")
-              .update({
-                payment_status: "completed",
-                transaction_id: txnId,
-                payment_method: paymentMethod,
-                amount: paymentAmount ? parseFloat(paymentAmount) : 150,
-                billing_start: new Date().toISOString(),
-                active_until: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-              })
-              .eq("profile_id", onboardingProfileId);
-
-            if (!error) {
-              // Update profile onboarding status
-              await supabase
-                .from("profiles")
-                .update({ onboarding_status: "profile" })
-                .eq("id", onboardingProfileId);
-              localStorage.removeItem("tipkoro_onboarding_profile_id");
-            }
-          } else if (storedTipData) {
+          if (storedTipData) {
+            // This is a tip payment
             setPaymentType("tip");
             const tipInfo = JSON.parse(storedTipData);
             setTipData(tipInfo);
 
             // Insert the tip into the database
-            await supabase.from("tips").insert({
+            const { error: tipError } = await supabase.from("tips").insert({
               creator_id: tipInfo.creatorId,
               supporter_name: tipInfo.supporterName,
               supporter_email: tipInfo.supporterEmail,
@@ -90,7 +71,53 @@ const PaymentSuccess: React.FC = () => {
               payment_method: paymentMethod,
             });
 
+            if (tipError) {
+              console.error("Error saving tip:", tipError);
+            }
+
             localStorage.removeItem("tipkoro_tip_data");
+          } else if (profile?.id) {
+            // This is likely an onboarding payment - find pending subscription
+            const { data: pendingSubscription, error: findError } = await supabase
+              .from("creator_subscriptions")
+              .select("*")
+              .eq("profile_id", profile.id)
+              .eq("payment_status", "pending")
+              .maybeSingle();
+
+            if (pendingSubscription && !findError) {
+              setPaymentType("onboarding");
+              
+              // Calculate billing dates
+              const billingStart = new Date();
+              const activeUntil = new Date();
+              activeUntil.setMonth(activeUntil.getMonth() + 3); // 3 months for promo
+
+              // Update the subscription
+              const { error: updateSubError } = await supabase
+                .from("creator_subscriptions")
+                .update({
+                  payment_status: "completed",
+                  transaction_id: txnId,
+                  payment_method: paymentMethod,
+                  amount: paymentAmount ? parseFloat(paymentAmount) : 10,
+                  billing_start: billingStart.toISOString(),
+                  active_until: activeUntil.toISOString(),
+                })
+                .eq("id", pendingSubscription.id);
+
+              if (updateSubError) {
+                console.error("Error updating subscription:", updateSubError);
+              } else {
+                // Update profile onboarding status to move to profile step
+                await supabase
+                  .from("profiles")
+                  .update({ onboarding_status: "profile" })
+                  .eq("id", profile.id);
+                
+                refetchProfile();
+              }
+            }
           }
 
           toast({
@@ -118,7 +145,7 @@ const PaymentSuccess: React.FC = () => {
     };
 
     verify();
-  }, [searchParams, navigate]);
+  }, [searchParams, navigate, isUserLoaded, profile?.id, refetchProfile]);
 
   if (isVerifying) {
     return (
@@ -126,7 +153,7 @@ const PaymentSuccess: React.FC = () => {
         <TopNavbar />
         <main className="flex-1 flex items-center justify-center p-6">
           <div className="tipkoro-card text-center py-12 max-w-md w-full">
-            <div className="animate-spin w-12 h-12 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+            <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto mb-4" />
             <h2 className="text-xl font-semibold mb-2">Verifying Payment...</h2>
             <p className="text-muted-foreground">Please wait while we confirm your payment.</p>
           </div>
@@ -144,7 +171,12 @@ const PaymentSuccess: React.FC = () => {
           <div className="tipkoro-card text-center py-12 max-w-md w-full">
             <div className="text-4xl mb-4">❌</div>
             <h2 className="text-xl font-semibold mb-2">Verification Failed</h2>
-            <p className="text-muted-foreground">Redirecting you back...</p>
+            <p className="text-muted-foreground mb-4">We couldn't verify your payment.</p>
+            <Link to="/">
+              <Button variant="outline">
+                <Home className="w-4 h-4 mr-2" /> Go Home
+              </Button>
+            </Link>
           </div>
         </main>
         <MainFooter />
@@ -188,7 +220,6 @@ const PaymentSuccess: React.FC = () => {
                   variant="outline"
                   className="w-full"
                   onClick={() => {
-                    // Generate shareable image logic would go here
                     toast({
                       title: "Coming Soon",
                       description: "Donation image generation will be available soon!",
@@ -201,11 +232,19 @@ const PaymentSuccess: React.FC = () => {
                   variant="outline"
                   className="w-full"
                   onClick={() => {
-                    navigator.share?.({
-                      title: "I supported a creator on TipKoro!",
-                      text: `I just sent a tip on TipKoro! Support your favorite creators too.`,
-                      url: window.location.origin,
-                    });
+                    if (navigator.share) {
+                      navigator.share({
+                        title: "I supported a creator on TipKoro!",
+                        text: `I just sent a tip on TipKoro! Support your favorite creators too.`,
+                        url: window.location.origin,
+                      });
+                    } else {
+                      navigator.clipboard.writeText(window.location.origin);
+                      toast({
+                        title: "Link Copied",
+                        description: "Share link copied to clipboard!",
+                      });
+                    }
                   }}
                 >
                   <Share2 className="w-4 h-4 mr-2" /> Share

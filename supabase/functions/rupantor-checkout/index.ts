@@ -16,7 +16,7 @@ serve(async (req) => {
   }
 
   try {
-    const { fullname, email, amount = 150, successUrl, cancelUrl } = await req.json();
+    const { fullname, email, amount = 150, successUrl, cancelUrl, reference_id } = await req.json();
 
     console.log("Creating checkout for:", { fullname, email, amount });
 
@@ -60,7 +60,8 @@ serve(async (req) => {
         webhook_url: webhookUrl,
         meta_data: {
           signup_type: "creator_promo",
-          plan: "month_1"
+          plan: "month_1",
+          reference_id: reference_id || null,
         }
       }),
     });
