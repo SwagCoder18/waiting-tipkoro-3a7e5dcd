@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useProfile } from "@/hooks/useProfile";
 import { useUsernameCheck } from "@/hooks/useUsernameCheck";
+import { useSupabaseWithAuth } from "@/hooks/useSupabaseWithAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,7 +9,6 @@ import { HeartIcon } from "./icons/PaymentIcons";
 import { toast } from "@/hooks/use-toast";
 import { createCheckout } from "@/lib/api";
 import { useUser } from "@clerk/clerk-react";
-import { supabase } from "@/integrations/supabase/client";
 import { Heart, Rocket, Link as LinkIcon, ArrowLeft, Check, X, Loader2 } from "lucide-react";
 
 type OnboardingStep = 'account_type' | 'payment' | 'profile';
@@ -16,6 +16,7 @@ type OnboardingStep = 'account_type' | 'payment' | 'profile';
 export function Onboarding() {
   const { user } = useUser();
   const { profile, updateProfile, refetch } = useProfile();
+  const supabase = useSupabaseWithAuth();
   const [currentStep, setCurrentStep] = useState<OnboardingStep>('account_type');
   const [isLoading, setIsLoading] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -30,9 +31,12 @@ export function Onboarding() {
     other_link: ''
   });
 
-  // Username availability check
+  // Username availability check - only needed for creators
   const { isChecking: isCheckingUsername, isAvailable: isUsernameAvailable, error: usernameError } = 
-    useUsernameCheck(formData.username, user?.id);
+    useUsernameCheck(
+      profile?.account_type === 'creator' ? formData.username : '', 
+      user?.id
+    );
 
   // Sync step with profile status on mount
   useEffect(() => {
@@ -54,6 +58,7 @@ export function Onboarding() {
     
     try {
       if (type === 'supporter') {
+        // Supporters skip to profile completion (which is now simpler)
         await updateProfile({ 
           account_type: 'supporter', 
           onboarding_status: 'profile' 
@@ -91,6 +96,7 @@ export function Onboarding() {
     setIsLoading(true);
     try {
       // Create pending subscription record BEFORE redirecting to payment
+      // Using authenticated supabase client with Clerk headers
       const { error: subscriptionError } = await supabase
         .from('creator_subscriptions')
         .insert({
@@ -158,7 +164,10 @@ export function Onboarding() {
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.username.trim()) {
+    // Username is only required for creators
+    const isCreator = profile?.account_type === 'creator';
+    
+    if (isCreator && !formData.username.trim()) {
       toast({
         title: "Username required",
         description: "Please choose a username for your profile.",
@@ -167,7 +176,7 @@ export function Onboarding() {
       return;
     }
 
-    if (!isUsernameAvailable) {
+    if (isCreator && !isUsernameAvailable) {
       toast({
         title: "Invalid username",
         description: usernameError || "Please choose a different username.",
@@ -183,8 +192,8 @@ export function Onboarding() {
       return link.replace(/^https?:\/\//, '').trim() || null;
     };
 
-    const result = await updateProfile({
-      username: formData.username.toLowerCase(),
+    // Build update object - only include username for creators
+    const profileUpdates: any = {
       bio: formData.bio || null,
       twitter: cleanLink(formData.twitter),
       instagram: cleanLink(formData.instagram),
@@ -192,7 +201,14 @@ export function Onboarding() {
       facebook: cleanLink(formData.facebook),
       other_link: cleanLink(formData.other_link),
       onboarding_status: 'completed'
-    });
+    };
+
+    // Only set username for creators
+    if (isCreator) {
+      profileUpdates.username = formData.username.toLowerCase();
+    }
+
+    const result = await updateProfile(profileUpdates);
 
     if (result.error) {
       toast({
@@ -222,6 +238,8 @@ export function Onboarding() {
   const getTotalSteps = () => {
     return profile?.account_type === 'creator' ? 3 : 2;
   };
+
+  const isCreator = profile?.account_type === 'creator';
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -387,103 +405,111 @@ export function Onboarding() {
 
               <div className="text-center">
                 <h2 className="text-2xl font-display font-bold mb-2">Complete Your Profile</h2>
-                <p className="text-muted-foreground">Tell us a bit about yourself</p>
+                <p className="text-muted-foreground">
+                  {isCreator ? "Set up your creator page" : "Almost done!"}
+                </p>
               </div>
               
               <div className="space-y-4">
-                <div>
-                  <label className="tipkoro-label">
-                    Username <span className="text-destructive">*</span>
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <span className="text-muted-foreground text-sm">tipkoro.com/</span>
-                    <div className="relative flex-1">
-                      <Input
-                        value={formData.username}
-                        onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                        placeholder="yourname"
-                        className={`tipkoro-input pr-10 ${
-                          formData.username.length >= 3 
-                            ? isUsernameAvailable 
-                              ? 'border-success focus:ring-success' 
-                              : 'border-destructive focus:ring-destructive'
-                            : ''
-                        }`}
-                      />
-                      {formData.username.length >= 3 && (
-                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                          {isCheckingUsername ? (
-                            <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-                          ) : isUsernameAvailable ? (
-                            <Check className="w-4 h-4 text-success" />
-                          ) : (
-                            <X className="w-4 h-4 text-destructive" />
-                          )}
-                        </div>
-                      )}
+                {/* Username field - only for creators */}
+                {isCreator && (
+                  <div>
+                    <label className="tipkoro-label">
+                      Username <span className="text-destructive">*</span>
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground text-sm">tipkoro.com/</span>
+                      <div className="relative flex-1">
+                        <Input
+                          value={formData.username}
+                          onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                          placeholder="yourname"
+                          className={`tipkoro-input pr-10 ${
+                            formData.username.length >= 3 
+                              ? isUsernameAvailable 
+                                ? 'border-success focus:ring-success' 
+                                : 'border-destructive focus:ring-destructive'
+                              : ''
+                          }`}
+                        />
+                        {formData.username.length >= 3 && (
+                          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                            {isCheckingUsername ? (
+                              <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                            ) : isUsernameAvailable ? (
+                              <Check className="w-4 h-4 text-success" />
+                            ) : (
+                              <X className="w-4 h-4 text-destructive" />
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
+                    {usernameError && (
+                      <p className="text-xs text-destructive mt-1">{usernameError}</p>
+                    )}
+                    {formData.username.length >= 3 && isUsernameAvailable && (
+                      <p className="text-xs text-success mt-1">Username is available!</p>
+                    )}
                   </div>
-                  {usernameError && (
-                    <p className="text-xs text-destructive mt-1">{usernameError}</p>
-                  )}
-                  {formData.username.length >= 3 && isUsernameAvailable && (
-                    <p className="text-xs text-success mt-1">Username is available!</p>
-                  )}
-                </div>
+                )}
                 
                 <div>
-                  <label className="tipkoro-label">Bio</label>
+                  <label className="tipkoro-label">Bio {!isCreator && <span className="text-muted-foreground font-normal">(optional)</span>}</label>
                   <Textarea
                     value={formData.bio}
                     onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-                    placeholder="Tell your supporters about yourself..."
+                    placeholder={isCreator ? "Tell your supporters about yourself..." : "A little about you..."}
                     className="tipkoro-input min-h-[100px]"
                     maxLength={300}
                   />
                   <p className="text-xs text-muted-foreground mt-1">{formData.bio.length}/300</p>
                 </div>
                 
-                <div className="space-y-3">
-                  <label className="tipkoro-label flex items-center gap-2">
-                    <LinkIcon className="w-4 h-4" />
-                    Social Links <span className="text-muted-foreground font-normal">(optional)</span>
-                  </label>
-                  <Input
-                    value={formData.twitter}
-                    onChange={(e) => setFormData({ ...formData, twitter: e.target.value })}
-                    placeholder="twitter.com/username"
-                    className="tipkoro-input"
-                  />
-                  <Input
-                    value={formData.instagram}
-                    onChange={(e) => setFormData({ ...formData, instagram: e.target.value })}
-                    placeholder="instagram.com/username"
-                    className="tipkoro-input"
-                  />
-                  <Input
-                    value={formData.youtube}
-                    onChange={(e) => setFormData({ ...formData, youtube: e.target.value })}
-                    placeholder="youtube.com/@channel"
-                    className="tipkoro-input"
-                  />
-                  <Input
-                    value={formData.facebook}
-                    onChange={(e) => setFormData({ ...formData, facebook: e.target.value })}
-                    placeholder="facebook.com/page"
-                    className="tipkoro-input"
-                  />
-                  <Input
-                    value={formData.other_link}
-                    onChange={(e) => setFormData({ ...formData, other_link: e.target.value })}
-                    placeholder="other website or link"
-                    className="tipkoro-input"
-                  />
-                </div>
+                {/* Social links - only show for creators */}
+                {isCreator && (
+                  <div className="space-y-3">
+                    <label className="tipkoro-label flex items-center gap-2">
+                      <LinkIcon className="w-4 h-4" />
+                      Social Links <span className="text-muted-foreground font-normal">(optional)</span>
+                    </label>
+                    <Input
+                      value={formData.twitter}
+                      onChange={(e) => setFormData({ ...formData, twitter: e.target.value })}
+                      placeholder="twitter.com/username"
+                      className="tipkoro-input"
+                    />
+                    <Input
+                      value={formData.instagram}
+                      onChange={(e) => setFormData({ ...formData, instagram: e.target.value })}
+                      placeholder="instagram.com/username"
+                      className="tipkoro-input"
+                    />
+                    <Input
+                      value={formData.youtube}
+                      onChange={(e) => setFormData({ ...formData, youtube: e.target.value })}
+                      placeholder="youtube.com/@channel"
+                      className="tipkoro-input"
+                    />
+                    <Input
+                      value={formData.facebook}
+                      onChange={(e) => setFormData({ ...formData, facebook: e.target.value })}
+                      placeholder="facebook.com/page"
+                      className="tipkoro-input"
+                    />
+                    <Input
+                      value={formData.other_link}
+                      onChange={(e) => setFormData({ ...formData, other_link: e.target.value })}
+                      placeholder="other website or link"
+                      className="tipkoro-input"
+                    />
+                  </div>
+                )}
               </div>
               
               <Button 
                 type="submit"
-                disabled={isLoading || (formData.username.length >= 3 && !isUsernameAvailable)}
+                disabled={isLoading || (isCreator && formData.username.length >= 3 && !isUsernameAvailable)}
                 className="w-full h-12 bg-accent text-accent-foreground hover:bg-tipkoro-gold-hover"
               >
                 {isLoading ? (

@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useUser } from '@clerk/clerk-react';
-import { supabase } from '@/integrations/supabase/client';
+import { useSupabaseWithAuth } from './useSupabaseWithAuth';
 
 export interface Profile {
   id: string;
@@ -25,31 +25,20 @@ export interface Profile {
   updated_at: string;
 }
 
+const MAX_RETRIES = 5;
+const RETRY_DELAY = 1000; // 1 second
+
 export function useProfile() {
   const { user, isLoaded } = useUser();
+  const supabase = useSupabaseWithAuth();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!isLoaded) return;
-    
-    if (!user) {
-      setProfile(null);
-      setLoading(false);
-      return;
-    }
-
-    fetchOrCreateProfile();
-  }, [user, isLoaded]);
-
-  const fetchOrCreateProfile = async () => {
+  const fetchProfile = useCallback(async (retryCount = 0): Promise<void> => {
     if (!user) return;
 
     try {
-      setLoading(true);
-      
-      // Try to fetch existing profile
       const { data: existingProfile, error: fetchError } = await supabase
         .from('profiles')
         .select('*')
@@ -62,31 +51,37 @@ export function useProfile() {
 
       if (existingProfile) {
         setProfile(existingProfile as Profile);
+        setError(null);
+      } else if (retryCount < MAX_RETRIES) {
+        // Profile not found - Clerk webhook might not have created it yet
+        // Wait and retry with exponential backoff
+        const delay = RETRY_DELAY * Math.pow(2, retryCount);
+        console.log(`Profile not found, retrying in ${delay}ms (attempt ${retryCount + 1}/${MAX_RETRIES})`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return fetchProfile(retryCount + 1);
       } else {
-        // Create new profile
-        const { data: newProfile, error: createError } = await supabase
-          .from('profiles')
-          .insert({
-            user_id: user.id,
-            email: user.primaryEmailAddress?.emailAddress || null,
-            first_name: user.firstName || null,
-            last_name: user.lastName || null,
-            avatar_url: user.imageUrl || null,
-            onboarding_status: 'pending'
-          })
-          .select()
-          .single();
-
-        if (createError) throw createError;
-        setProfile(newProfile as Profile);
+        // Max retries exceeded - profile still not created
+        setError('Profile not found. Please try refreshing the page.');
+        console.error('Profile not found after max retries');
       }
     } catch (err: any) {
-      console.error('Error fetching/creating profile:', err);
+      console.error('Error fetching profile:', err);
       setError(err.message);
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [user, supabase]);
+
+  useEffect(() => {
+    if (!isLoaded) return;
+    
+    if (!user) {
+      setProfile(null);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    fetchProfile().finally(() => setLoading(false));
+  }, [user, isLoaded, fetchProfile]);
 
   const updateProfile = async (updates: Partial<Profile>) => {
     if (!user || !profile) return { error: 'No user or profile' };
@@ -109,7 +104,8 @@ export function useProfile() {
   };
 
   const refetch = () => {
-    fetchOrCreateProfile();
+    setLoading(true);
+    fetchProfile().finally(() => setLoading(false));
   };
 
   return { profile, loading, error, updateProfile, refetch };

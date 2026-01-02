@@ -5,6 +5,7 @@ import { MainFooter } from "@/components/MainFooter";
 import { Button } from "@/components/ui/button";
 import { verifyPayment } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
+import { useSupabaseWithAuth } from "@/hooks/useSupabaseWithAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useUser } from "@clerk/clerk-react";
 import { useProfile } from "@/hooks/useProfile";
@@ -16,6 +17,7 @@ const PaymentSuccess: React.FC = () => {
   const navigate = useNavigate();
   const { user, isLoaded: isUserLoaded } = useUser();
   const { profile, refetch: refetchProfile } = useProfile();
+  const supabaseWithAuth = useSupabaseWithAuth();
   const [isVerifying, setIsVerifying] = useState(true);
   const [isVerified, setIsVerified] = useState(false);
   const [paymentType, setPaymentType] = useState<"onboarding" | "tip" | null>(null);
@@ -58,7 +60,7 @@ const PaymentSuccess: React.FC = () => {
             const tipInfo = JSON.parse(storedTipData);
             setTipData(tipInfo);
 
-            // Insert the tip into the database
+            // Insert the tip into the database (tips can be inserted by anyone)
             const { error: tipError } = await supabase.from("tips").insert({
               creator_id: tipInfo.creatorId,
               supporter_name: tipInfo.supporterName,
@@ -78,7 +80,8 @@ const PaymentSuccess: React.FC = () => {
             localStorage.removeItem("tipkoro_tip_data");
           } else if (profile?.id) {
             // This is likely an onboarding payment - find pending subscription
-            const { data: pendingSubscription, error: findError } = await supabase
+            // Use authenticated client for RLS-protected table
+            const { data: pendingSubscription, error: findError } = await supabaseWithAuth
               .from("creator_subscriptions")
               .select("*")
               .eq("profile_id", profile.id)
@@ -93,8 +96,8 @@ const PaymentSuccess: React.FC = () => {
               const activeUntil = new Date();
               activeUntil.setMonth(activeUntil.getMonth() + 3); // 3 months for promo
 
-              // Update the subscription
-              const { error: updateSubError } = await supabase
+              // Update the subscription using authenticated client
+              const { error: updateSubError } = await supabaseWithAuth
                 .from("creator_subscriptions")
                 .update({
                   payment_status: "completed",
@@ -110,7 +113,7 @@ const PaymentSuccess: React.FC = () => {
                 console.error("Error updating subscription:", updateSubError);
               } else {
                 // Update profile onboarding status to move to profile step
-                await supabase
+                await supabaseWithAuth
                   .from("profiles")
                   .update({ onboarding_status: "profile" })
                   .eq("id", profile.id);
@@ -145,7 +148,7 @@ const PaymentSuccess: React.FC = () => {
     };
 
     verify();
-  }, [searchParams, navigate, isUserLoaded, profile?.id, refetchProfile]);
+  }, [searchParams, navigate, isUserLoaded, profile?.id, refetchProfile, supabaseWithAuth]);
 
   if (isVerifying) {
     return (
