@@ -35,6 +35,51 @@ export function useProfile() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const createFallbackProfile = useCallback(async (): Promise<Profile | null> => {
+    if (!user) return null;
+    
+    console.log('Creating fallback profile for user:', user.id);
+    
+    const email = user.primaryEmailAddress?.emailAddress || null;
+    const emailPrefix = email ? email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '') : null;
+    const username = emailPrefix || `user${Math.random().toString(36).substring(2, 8)}`;
+    
+    const newProfile = {
+      user_id: user.id,
+      email,
+      first_name: user.firstName || null,
+      last_name: user.lastName || null,
+      username,
+      avatar_url: user.imageUrl || null,
+      onboarding_status: 'account_type' as const,
+      account_type: 'supporter' as const,
+    };
+    
+    const { data, error } = await supabase
+      .from('profiles')
+      .insert(newProfile)
+      .select()
+      .single();
+    
+    if (error) {
+      // If insert fails due to conflict (profile already exists), fetch it
+      if (error.code === '23505') {
+        console.log('Profile already exists, fetching...');
+        const { data: existingProfile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
+        return existingProfile as Profile | null;
+      }
+      console.error('Error creating fallback profile:', error);
+      return null;
+    }
+    
+    console.log('Fallback profile created:', data);
+    return data as Profile;
+  }, [user, supabase]);
+
   const fetchProfile = useCallback(async (retryCount = 0): Promise<void> => {
     if (!user) return;
 
@@ -60,15 +105,21 @@ export function useProfile() {
         await new Promise(resolve => setTimeout(resolve, delay));
         return fetchProfile(retryCount + 1);
       } else {
-        // Max retries exceeded - profile still not created
-        setError('Profile not found. Please try refreshing the page.');
-        console.error('Profile not found after max retries');
+        // Max retries exceeded - create profile locally as fallback
+        console.log('Max retries exceeded, creating fallback profile...');
+        const fallbackProfile = await createFallbackProfile();
+        if (fallbackProfile) {
+          setProfile(fallbackProfile);
+          setError(null);
+        } else {
+          setError('Could not create profile. Please try refreshing the page.');
+        }
       }
     } catch (err: any) {
       console.error('Error fetching profile:', err);
       setError(err.message);
     }
-  }, [user, supabase]);
+  }, [user, supabase, createFallbackProfile]);
 
   useEffect(() => {
     if (!isLoaded) return;

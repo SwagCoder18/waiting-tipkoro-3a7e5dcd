@@ -26,3 +26,9 @@ verify_jwt = false
 
 [functions.complete-signup]
 verify_jwt = false
+
+[functions.clerk-webhook]
+verify_jwt = false
+
+[functions.debug-config]
+verify_jwt = false
