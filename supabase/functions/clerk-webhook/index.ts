@@ -55,10 +55,43 @@ Deno.serve(async (req: Request) => {
 
     console.info('Webhook event type:', payload.type);
 
+    // Helper to generate a unique username
+    const generateUsername = (userData: any): string | null => {
+      // Priority 1: Clerk username if set
+      if (userData.username) {
+        return userData.username;
+      }
+      
+      // Priority 2: Email prefix
+      const email = userData.email_addresses?.[0]?.email_address;
+      if (email) {
+        const prefix = email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+        return prefix || null;
+      }
+      
+      // Priority 3: First name + random suffix
+      if (userData.first_name) {
+        const cleanName = userData.first_name.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const suffix = Math.random().toString(36).substring(2, 6);
+        return `${cleanName}${suffix}`;
+      }
+      
+      // Priority 4: Random username
+      return `user${Math.random().toString(36).substring(2, 8)}`;
+    };
+
     // Helper to map Clerk user object to your profiles columns
     const mapClerkToProfile = (userData: any) => {
       const email = userData.email_addresses?.[0]?.email_address || null;
-      const username = userData.username || (email ? email.split('@')[0] : null);
+      const username = generateUsername(userData);
+      
+      console.log('Mapping Clerk user to profile:', {
+        clerkId: userData.id,
+        clerkUsername: userData.username,
+        email,
+        generatedUsername: username,
+      });
+      
       return {
         user_id: userData.id, // store Clerk ID in user_id column
         email,
